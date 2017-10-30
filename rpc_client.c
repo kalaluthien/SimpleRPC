@@ -18,7 +18,7 @@ static double sum_of_response_time_sqare;
 static int request_keys[DB_COUNT];
 static int request_count;
 
-struct timeval time_out = { .tv_sec = 1L, .tv_usec = 0L };
+struct timeval time_out = { .tv_sec = 10L, .tv_usec = 0L };
 
 int main(int argc, char *argv[]) {
   char buf[DATA_SIZE];
