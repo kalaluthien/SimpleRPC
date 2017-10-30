@@ -64,7 +64,7 @@ void print_stats() {
     (sum_of_response_time_sqare / request_count - mean_response_time * mean_response_time);
 
   printf("mean resopnse time = %.4lf ns\n", mean_response_time * 1000000);
-  printf("standatd deviation = %.4lf ns\n", sqrt(var_response_time * 1000000));
+  printf("standatd deviation = %.4lf ns\n", sqrt(var_response_time) * 1000000);
 }
 
 void sleep_req(int ms) {
