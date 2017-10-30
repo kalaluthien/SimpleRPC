@@ -32,7 +32,12 @@ int main(int argc, char *argv[]) {
     write_clnt(argv[1], buf, request_keys[i]);
 #else
 #endif
+    if (i % (request_keys / 20) == 0) {
+      printf("*");
+      fflush(stdout);
+    }
   }
+  printf(" done!\n");
 
   print_stats();
   return 0;
