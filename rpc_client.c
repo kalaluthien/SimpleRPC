@@ -89,10 +89,10 @@ CLIENT *connect_server(char *host) {
 
   printf("connected with %s as %u.%u.%u.%u:%u\n",
          host,
-         ip / 0x1000000 % 0x100,
-         ip / 0x10000 % 0x100,
-         ip / 0x100 % 0x100,
          ip % 0x100,
+         ip / 0x100 % 0x100,
+         ip / 0x10000 % 0x100,
+         ip / 0x1000000 % 0x100,
          port);
 
   return clnt;
