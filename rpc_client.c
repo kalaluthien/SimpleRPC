@@ -10,7 +10,6 @@
 void parse_input(int argc, char *argv[]);
 CLIENT *connect_server(char *host);
 void print_stats();
-void sleep_req(int ms);
 void read_clnt(CLIENT *clnt, char *buffer, int key);
 void write_clnt(CLIENT *clnt, char *buffer, int key);
 
@@ -30,6 +29,7 @@ int main(int argc, char *argv[]) {
 
   int i;
   for (i = 0; i < request_count; i++) {
+    usleep(100000);
 #ifdef READ_MODE
     read_clnt(clnt, buf, request_keys[i]);
 #elif WRITE_MODE
@@ -40,8 +40,6 @@ int main(int argc, char *argv[]) {
       printf("*");
       fflush(stdout);
     }
-
-    sleep_req(100);
   }
 
   clnt_destroy(clnt);
@@ -68,11 +66,17 @@ void parse_input(int argc, char *argv[]) {
     }
   }
 
+  printf("trace file (%s) parsed\n", argv[2]);
+
   fclose(trace_fp);
 }
 
 CLIENT *connect_server(char *host) {
-  CLIENT *clnt = clnt_create(host, TEST_PROG, TEST_VERS, "tcp");
+  CLIENT *clnt;
+  if ((clnt = clnt_create(host, TEST_PROG, TEST_VERS, "udp")) == NULL) {
+    fprintf(stderr, "Error: clnt_create faild\n");
+    exit (EXIT_FAILURE);
+  }
 
   struct sockaddr_in sa;
   if (clnt_control(clnt, CLGET_SERVER_ADDR, (char *) &sa) == 0) {
@@ -80,7 +84,16 @@ CLIENT *connect_server(char *host) {
     exit (EXIT_FAILURE);
   }
 
-  printf("connected with %s as %u:%hu", host, sa.sin_addr.s_addr, sa.sin_port);
+  unsigned int ip = sa.sin_addr.s_addr;
+  unsigned int port = sa.sin_port;
+
+  printf("connected with %s as %u.%u.%u.%u:%u\n",
+         host,
+         ip / 0x1000000 % 0x100,
+         ip / 0x10000 % 0x100,
+         ip / 0x100 % 0x100,
+         ip % 0x100,
+         port);
 
   return clnt;
 }
@@ -130,11 +143,4 @@ void write_clnt(CLIENT *clnt, char *buffer, int key) {
     fprintf(stderr, "Error: write_clnt faild at %d\n", stat);
     exit(EXIT_FAILURE);
   }
-}
-
-void sleep_req(int ms) {
-  static struct timespec ts;
-  ts.tv_sec = ms / 1000;
-  ts.tv_nsec = (ms % 1000) * 1000000;
-  nanosleep(&ts, NULL);
 }
