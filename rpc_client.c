@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <time.h>
+#include <math.h>
 #include <rpc/rpc.h>
 #include "common.h"
 
@@ -12,9 +13,10 @@ void sleep_req(int ms);
 void read_clnt(char *host, char *buffer, int key);
 void write_clnt(char *host, char *buffer, int key);
 
-double laytancy_sum;
-int req_keys[DB_COUNT];
-int req_count;
+double sum_of_response_time;
+double sum_of_response_time_sqare;
+int request_keys[DB_COUNT];
+int request_count;
 
 int main(int argc, char *argv[]) {
   char buf[DATA_SIZE];
@@ -22,12 +24,12 @@ int main(int argc, char *argv[]) {
   parse_input(argc, argv);
 
   int i;
-  for (i = 0; i < req_count; i++) {
+  for (i = 0; i < request_count; i++) {
     sleep_req(100);
 #ifdef READ_MODE
-    read_clnt(argv[1], buf, req_keys[i]);
+    read_clnt(argv[1], buf, request_keys[i]);
 #elif WRITE_MODE
-    write_clnt(argv[1], buf, req_keys[i]);
+    write_clnt(argv[1], buf, request_keys[i]);
 #else
 #endif
   }
@@ -44,10 +46,10 @@ void parse_input(int argc, char *argv[]) {
 
   FILE *trace_fp = fopen(argv[2], "r");
 
-  int rec_key, rec_size;
-  while (fscanf(trace_fp, "%d %d", &rec_key, &rec_size) != EOF) {
-    req_keys[req_count++] = rec_key;
-    if (DATA_SIZE != rec_size) {
+  int record_key, record_size;
+  while (fscanf(trace_fp, "%d %d", &record_key, &record_size) != EOF) {
+    request_keys[request_count++] = record_key;
+    if (DATA_SIZE != record_size) {
       fprintf(stderr, "reqested data size unavailable\n");
       exit(EXIT_FAILURE);
     }
@@ -57,8 +59,12 @@ void parse_input(int argc, char *argv[]) {
 }
 
 void print_stats() {
-  double mean_response_time = laytancy_sum / req_count;
-  printf("mean resopnse time = %.6lf ms\n", mean_response_time * MS);
+  double mean_response_time = sum_of_response_time / request_count;
+  double var_response_time =
+    (sum_of_response_time_sqare / request_count - mean_response_time * mean_response_time);
+
+  printf("mean resopnse time = %.4lf ns\n", mean_response_time * 1000000);
+  printf("standatd deviation = %.4lf ns\n", sqrt(var_response_time * 1000000));
 }
 
 void sleep_req(int ms) {
@@ -73,7 +79,9 @@ void read_clnt(char *host, char *buffer, int key) {
   enum clnt_stat stat = callrpc(host, TEST_PROG, TEST_VERS, TEST_RDOP,
                                 (xdrproc_t) xdr_int, (const char *) &key,
                                 (xdrproc_t) xdr_read, buffer);
-  laytancy_sum += (double) (clock() - time_begin) / CLOCKS_PER_SEC;
+  double response_time = (double) (clock() - time_begin) / CLOCKS_PER_SEC;
+  sum_of_response_time += response_time;
+  sum_of_response_time_sqare += response_time * response_time;
 
   if (stat != RPC_SUCCESS) {
     clnt_perrno(stat);
@@ -91,7 +99,9 @@ void write_clnt(char *host, char *buffer, int key) {
   enum clnt_stat stat = callrpc(host, TEST_PROG, TEST_VERS, TEST_WROP,
                                 (xdrproc_t) xdr_write, (const char *) &block,
                                 (xdrproc_t) xdr_void, NULL);
-  laytancy_sum += (double) (clock() - time_begin) / CLOCKS_PER_SEC;
+  double response_time = (double) (clock() - time_begin) / CLOCKS_PER_SEC;
+  sum_of_response_time += response_time;
+  sum_of_response_time_sqare += response_time * response_time;
 
   if (stat != RPC_SUCCESS) {
     clnt_perrno(stat);

@@ -1,7 +1,6 @@
 #ifndef __RPC_COMMON_H__
 #define __RPC_COMMON_H__
 
-#define MS 1000
 #define HOST_LEN 64
 
 #define DATA_SIZE 1024
