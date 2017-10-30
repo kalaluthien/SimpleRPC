@@ -7,6 +7,7 @@
 
 void parse_input(int argc, char *argv[]);
 void print_stats();
+void sleep_req(int ms);
 
 void read_clnt(char *host, char *buffer, int key);
 void write_clnt(char *host, char *buffer, int key);
