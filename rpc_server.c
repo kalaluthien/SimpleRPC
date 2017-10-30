@@ -8,7 +8,6 @@
 #include <rpc/rpc.h>
 #include "common.h"
 
-#define LOG_ENABLE
 #define LOCK_PREFIX "lock; "
 #define ENDL "\n\t"
 

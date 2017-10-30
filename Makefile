@@ -1,19 +1,20 @@
 CC = gcc
 
-DEFINES = -DREAD_MODE
-# DEFINES = -DREAD_MODE
-# DEFINES = -DWRITE_MODE
+SERVER_DEFINES = -DLOG_ENABLE
+CLIENT_DEFINES = -DREAD_MODE
+# CLIENT_DEFINES = -DREAD_MODE
+# CLIENT_DEFINES = -DWRITE_MODE
 
-CFLAGS = -g -Wall -O2 $(DEFINES)
+CFLAGS = -g -Wall -O2
 LDFLAGS = -lm
 
 all: rpc_server rpc_client
 
 rpc_server: rpc_server.c
-	$(CC) $(CFLAGS) $< -o $@
+	$(CC) $(SERVER_DEFINES) $(CFLAGS) $< -o $@ $(LDFLAGS)
 
 rpc_client: rpc_client.c
-	$(CC) $(CFLAGS) $< -o $@ $(LDFLAGS)
+	$(CC) $(CLIENT_DEFINES) $(CFLAGS) $< -o $@ $(LDFLAGS)
 
 clean:
 	rm rpc_server rpc_client
