@@ -44,6 +44,8 @@ void (*encrypt)(char *);
 void (*decrypt)(char *);
 
 int main(int argc, char *argv[]) {
+  int i, progress_percent, num_done;
+  double progress_ratio;
   char buf[DATA_SIZE];
 
   parse_input(argc, argv);
@@ -53,7 +55,6 @@ int main(int argc, char *argv[]) {
   set_crypto_scheme(CS_DES);
   setcrypt();
 
-  int i;
   for (i = 0; i < request_count; i++) {
     usleep(100000);
 
@@ -69,14 +70,12 @@ int main(int argc, char *argv[]) {
     write_clnt(clnt, buf, request_keys[i]);
 #endif
 
-#ifdef PROGRESS_BAR
-    double progress_ratio = (double) i / request_count;
-    int progress_percent = (int) (progress_ratio * 100);
-    int num_done = (int) (progress_ratio * 50);
+    progress_ratio = (double) (i + 1) / request_count;
+    progress_percent = (int) (progress_ratio * 100);
+    num_done = (int) (progress_ratio * 50);
     printf("\r %3d%% [%*s%*s]",
            progress_percent, num_done, PROGRESS_BAR, 50 - num_done, "");
     fflush(stdout);
-#endif
   }
 
   clnt_destroy(clnt);
