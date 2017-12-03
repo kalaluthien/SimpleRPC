@@ -62,23 +62,22 @@ int main(int argc, char *argv[]) {
 
     decrypt(buf);
     check_buffer(buf, request_keys[i]);
-
 #elif WRITE_MODE
     init_buffer(buf, request_keys[i]);
     encrypt(buf);
 
     write_clnt(clnt, buf, request_keys[i]);
-
 #endif
 
 #ifdef PROGRESS_BAR
-  double progress_ratio = (double) i / request_count;
-  int progress_percent = (int) (progress_ratio * 100);
-  int num_done = (int) (progress_ratio * 50);
-  int num_left = 50 - num_done;
-  printf("\r %3d%% [%*s%*s]", progress_percent, num_done, PROGRESS_BAR, num_left, "");
-  fflush(stdout);
+    double progress_ratio = (double) i / request_count;
+    int progress_percent = (int) (progress_ratio * 100);
+    int num_done = (int) (progress_ratio * 50);
+    printf("\r %3d%% [%*s%*s]",
+           progress_percent, num_done, PROGRESS_BAR, 50 - num_done, "");
+    fflush(stdout);
 #endif
+  }
 
   clnt_destroy(clnt);
 
@@ -284,12 +283,3 @@ void des_decrypt(char *data) {
   memcpy(in, out, DATA_SIZE);
   free(out);
 }
-
-
-
-
-
-
-
-
-
