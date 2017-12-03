@@ -158,9 +158,9 @@ void write_clnt(CLIENT *clnt, char *buffer, int key) {
   memcpy(block.data, buffer, sizeof(char) * DATA_SIZE);
 
   clock_t time_begin = clock();
-  enum clnt_stat stat = clnt_call(clnt, TEST_RDOP,
-                                  (xdrproc_t) xdr_int, (char *) &key,
-                                  (xdrproc_t) xdr_read, buffer, time_out);
+  enum clnt_stat stat = clnt_call(clnt, TEST_WROP,
+                                  (xdrproc_t) xdr_write, (char *) &block,
+                                  (xdrproc_t) xdr_void, NULL, time_out);
   double response_time = (double) (clock() - time_begin) / CLOCKS_PER_SEC;
   sum_of_response_time += response_time;
   sum_of_response_time_sqare += response_time * response_time;
@@ -238,7 +238,10 @@ void des_decrypt(char *data, size_t data_size) {
     exit(EXIT_FAILURE);
   }
 
-  DES_ecb_encrypt(&in[i], out[i], &des_keysched, DES_DECRYPT);
+  int i;
+  for (i = 0; i < data_size % sizeof(DES_cblock); i++) {
+    DES_ecb_encrypt(&in[i], &out[i], &des_keysched, DES_DECRYPT);
+  }
 
   memcpy(in, out, data_size);
   free(out);
