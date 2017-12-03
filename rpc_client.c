@@ -29,6 +29,9 @@ void none_decrypt(char *data);
 void des_setup();
 void des_encrypt(char *data);
 void des_decrypt(char *data);
+void three_des_setup();
+void three_des_encrypt(char *data);
+void three_des_decrypt(char *data);
 
 /* Statistics global variables */
 static double sum_of_response_time;
@@ -45,7 +48,7 @@ static int request_count;
 
 
 /* Crypto global variables */
-enum CRYPTO_SCHEME { CS_NONE, CS_DES, CS_3DES, CS_AES, CS_DH, CS_RSA };
+enum CRYPTO_SCHEME { CS_NONE, CS_DES, CS_3_DES, CS_AES, CS_DH, CS_RSA };
 void (*setcrypt)(void);
 void (*encrypt)(char *);
 void (*decrypt)(char *);
@@ -211,6 +214,12 @@ void set_crypto_scheme(enum CRYPTO_SCHEME crypto_scheme) {
       decrypt = des_decrypt;
       break;
 
+    case CS_3_DES:
+      setcrypt = three_des_setup;
+      encrypt = three_des_encrypt;
+      decrypt = three_des_decrypt;
+      break;
+
     case CS_NONE: default:
       setcrypt = none_setup;
       encrypt = none_encrypt;
@@ -247,8 +256,11 @@ void none_encrypt(char *data) { }
 
 void none_decrypt(char *data) { }
 
-static DES_cblock des_key = { 0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10 };
-static DES_key_schedule des_keysched;
+static DES_cblock des_key[2] = {
+  { 0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10 },
+  { 0x76, 0x98, 0xBA, 0x32, 0x10, 0xFE, 0xDC, 0x54 }
+};
+static DES_key_schedule des_keysched[2];
 
 void des_setup() {
   static int is_already_set = 0;
@@ -258,7 +270,7 @@ void des_setup() {
     exit(EXIT_FAILURE);
   }
 
-  DES_set_key(&des_key, &des_keysched);
+  DES_set_key(&des_key[0], &des_keysched[0]);
 }
 
 void des_encrypt(char *data) {
@@ -274,7 +286,7 @@ void des_encrypt(char *data) {
 
   int i;
   for (i = 0; i < DATA_SIZE / sizeof(DES_cblock); i++) {
-    DES_ecb_encrypt(&in[i], &out[i], &des_keysched, DES_ENCRYPT);
+    DES_ecb_encrypt(&in[i], &out[i], &des_keysched[0], DES_ENCRYPT);
   }
 
   double encryption_time = (double) (clock() - time_begin) / CLOCKS_PER_SEC;
@@ -298,7 +310,67 @@ void des_decrypt(char *data) {
 
   int i;
   for (i = 0; i < DATA_SIZE / sizeof(DES_cblock); i++) {
-    DES_ecb_encrypt(&in[i], &out[i], &des_keysched, DES_DECRYPT);
+    DES_ecb_encrypt(&in[i], &out[i], &des_keysched[0], DES_DECRYPT);
+  }
+
+  double decryption_time = (double) (clock() - time_begin) / CLOCKS_PER_SEC;
+  sum_of_decryption_time += decryption_time;
+  sum_of_decryption_time_sqare += decryption_time * decryption_time;
+
+  memcpy(in, out, DATA_SIZE);
+  free(out);
+}
+
+void three_des_setup() {
+  static int is_already_set = 0;
+
+  if (is_already_set++ > 0) {
+    fprintf(stderr, "Error: DES setup called twice\n");
+    exit(EXIT_FAILURE);
+  }
+
+  DES_set_key(&des_key[0], &des_keysched[0]);
+  DES_set_key(&des_key[1], &des_keysched[1]);
+}
+
+void three_des_encrypt(char *data) {
+  DES_cblock *in = (DES_cblock *) data;
+  DES_cblock *out = (DES_cblock *) malloc(DATA_SIZE);
+
+  if (DATA_SIZE % sizeof(DES_cblock) != 0) {
+    fprintf(stderr, "Error: data size invalid (%d)\n", DATA_SIZE);
+    exit(EXIT_FAILURE);
+  }
+
+  clock_t time_begin = clock();
+
+  int i;
+  for (i = 0; i < DATA_SIZE / sizeof(DES_cblock); i++) {
+    DES_ecb2_encrypt(&in[i], &out[i], &des_keysched[0], &des_keysched[1] DES_ENCRYPT);
+  }
+
+  double encryption_time = (double) (clock() - time_begin) / CLOCKS_PER_SEC;
+  sum_of_encryption_time += encryption_time;
+  sum_of_encryption_time_sqare += encryption_time * encryption_time;
+
+  memcpy(in, out, DATA_SIZE);
+  free(out);
+}
+
+void three_des_decrypt(char *data) {
+  DES_cblock *in = (DES_cblock *) data;
+  DES_cblock *out = (DES_cblock *) malloc(DATA_SIZE);
+
+  if (DATA_SIZE % sizeof(DES_cblock) != 0) {
+    fprintf(stderr, "Error: data size invalid (%d)\n", DATA_SIZE);
+    exit(EXIT_FAILURE);
+  }
+
+  clock_t time_begin = clock();
+
+  int i;
+  for (i = 0; i < DATA_SIZE / sizeof(DES_cblock); i++) {
+    DES_ecb2_encrypt(&in[i], &out[i], &des_keysched[0], &des_keysched[1], DES_DECRYPT);
   }
 
   double decryption_time = (double) (clock() - time_begin) / CLOCKS_PER_SEC;
