@@ -12,9 +12,11 @@ BIN_DIR = bin
 all: rpc_server rpc_client
 
 rpc_server: rpc_server.c
+	mkdir -p $(BIN_DIR)
 	$(CC) $(SERVER_DEFINES) $(CFLAGS) $< -o $(BIN_DIR)/$@ $(LDFLAGS)
 
 rpc_client: rpc_client.c
+	mkdir -p $(BIN_DIR)
 	$(CC) $(CLIENT_READ_DEFINES)  $(CFLAGS) $< -o $(BIN_DIR)/$@ $(LDFLAGS)
 	$(CC) $(CLIENT_WRITE_DEFINES) $(CFLAGS) $< -o $(BIN_DIR)/$@ $(LDFLAGS)
 
