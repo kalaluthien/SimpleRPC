@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
 #include <time.h>
@@ -20,12 +21,14 @@ void write_clnt(CLIENT *clnt, char *buffer, int key);
 
 /* Crypto function prototypes */
 void set_crypto_scheme();
-void no_setup();
-void no_encrypt(char *data, size_t data_size);
-void no_decrypt(char *data, size_t data_size);
+void init_buffer(char *buffer, int key);
+void check_buffer(char *buffer, int key);
+void none_setup();
+void none_encrypt(char *data);
+void none_decrypt(char *data);
 void des_setup();
-void des_encrypt(char *data, size_t data_size);
-void des_decrypt(char *data, size_t data_size);
+void des_encrypt(char *data);
+void des_decrypt(char *data);
 
 /* RPC global variables */
 static struct timeval time_out = { .tv_sec = 10L, .tv_usec = 0L };
@@ -37,8 +40,8 @@ static int request_count;
 /* Crypto global variables */
 enum CRYPTO_SCHEME { CS_NONE, CS_DES, CS_3DES, CS_AES, CS_DH, CS_RSA };
 void (*setcrypt)(void);
-void (*encrypt)(char *, size_t);
-void (*decrypt)(char *, size_t);
+void (*encrypt)(char *);
+void (*decrypt)(char *);
 
 int main(int argc, char *argv[]) {
   char buf[DATA_SIZE];
@@ -47,7 +50,7 @@ int main(int argc, char *argv[]) {
 
   CLIENT *clnt = connect_server(argv[1]);
 
-  set_crypto_scheme(CS_NONE);
+  set_crypto_scheme(CS_DES);
   setcrypt();
 
   int i;
@@ -56,9 +59,13 @@ int main(int argc, char *argv[]) {
 
 #ifdef READ_MODE
     read_clnt(clnt, buf, request_keys[i]);
-    decrypt(buf, sizeof(buf));
+
+    decrypt_buf(buf, sizeof(buf));
+    check_buffer(buf, request_keys[i]);
 #elif WRITE_MODE
+    init_buffer(buf, request_keys[i]);
     encrypt(buf, sizeof(buf));
+
     write_clnt(clnt, buf, request_keys[i]);
 #else
 #endif
@@ -181,18 +188,44 @@ void set_crypto_scheme(enum CRYPTO_SCHEME crypto_scheme) {
       break;
 
     case CS_NONE: default:
-      setcrypt = no_setup;
-      encrypt = no_encrypt;
-      decrypt = no_decrypt;
+      setcrypt = none_setup;
+      encrypt = none_encrypt;
+      decrypt = none_decrypt;
       break;
   }
 }
 
-void no_setup() { }
+void init_buffer(char *buffer, int key) {
+  srand(key);
 
-void no_encrypt(char *data, size_t data_size) { }
+  int i;
+  for (i = 0; i < DATA_SIZE; i++) {
+    buffer[i] = rand() % 128;
+  }
+}
 
-void no_decrypt(char *data, size_t data_size) { }
+void check_buffer(char *buffer, int key) {
+  srand(key);
+
+  int i, verified = 1;
+  for (i = 0; i < DATA_SIZE; i++) {
+    if (buffer[i] != (rand() % 128)) {
+      verified = 0;
+      break;
+    }
+  }
+
+  if (!verified) {
+    fprintf(stderr, "Error: decryption verification faild\n");
+    exit(EXIT_FAILURE);
+  }
+}
+
+void none_setup() { }
+
+void none_encrypt(char *data) { }
+
+void none_decrypt(char *data) { }
 
 static DES_cblock des_key;
 static DES_key_schedule des_keysched;
@@ -207,43 +240,44 @@ void des_setup() {
   }
 
   RAND_seed(des_seed, sizeof(des_seed) / sizeof(DES_cblock));
+
   DES_random_key(&des_key);
   DES_set_key((const_DES_cblock *) &des_key, &des_keysched);
 }
 
-void des_encrypt(char *data, size_t data_size) {
+void des_encrypt(char *data) {
   DES_cblock *in = (DES_cblock *) data;
-  DES_cblock *out = (DES_cblock *) malloc(data_size);
+  DES_cblock *out = (DES_cblock *) malloc(DATA_SIZE);
 
-  if (data_size % sizeof(DES_cblock) != 0) {
-    fprintf(stderr, "Error: data size invalid (%lu)\n", data_size);
+  if (DATA_SIZE % sizeof(DES_cblock) != 0) {
+    fprintf(stderr, "Error: data size invalid (%lu)\n", DATA_SIZE);
     exit(EXIT_FAILURE);
   }
 
   int i;
-  for (i = 0; i < data_size % sizeof(DES_cblock); i++) {
+  for (i = 0; i < DATA_SIZE % sizeof(DES_cblock); i++) {
     DES_ecb_encrypt(&in[i], &out[i], &des_keysched, DES_ENCRYPT);
   }
 
-  memcpy(in, out, data_size);
+  memcpy(in, out, DATA_SIZE);
   free(out);
 }
 
-void des_decrypt(char *data, size_t data_size) {
+void des_decrypt(char *data) {
   DES_cblock *in = (DES_cblock *) data;
-  DES_cblock *out = (DES_cblock *) malloc(data_size);
+  DES_cblock *out = (DES_cblock *) malloc(DATA_SIZE);
 
-  if (data_size % sizeof(DES_cblock) != 0) {
-    fprintf(stderr, "Error: data size invalid (%lu)\n", data_size);
+  if (DATA_SIZE % sizeof(DES_cblock) != 0) {
+    fprintf(stderr, "Error: data size invalid (%lu)\n", DATA_SIZE);
     exit(EXIT_FAILURE);
   }
 
   int i;
-  for (i = 0; i < data_size % sizeof(DES_cblock); i++) {
+  for (i = 0; i < DATA_SIZE % sizeof(DES_cblock); i++) {
     DES_ecb_encrypt(&in[i], &out[i], &des_keysched, DES_DECRYPT);
   }
 
-  memcpy(in, out, data_size);
+  memcpy(in, out, DATA_SIZE);
   free(out);
 }
 
