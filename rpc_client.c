@@ -10,7 +10,7 @@
 #include <openssl/des.h>
 #include "common.h"
 
-/* personal types */
+#define PROGRESS_BAR "##################################################"
 
 /* RPC function prototypes */
 void parse_input(int argc, char *argv[]);
@@ -60,21 +60,25 @@ int main(int argc, char *argv[]) {
 #ifdef READ_MODE
     read_clnt(clnt, buf, request_keys[i]);
 
-    decrypt_buf(buf, sizeof(buf));
+    decrypt(buf);
     check_buffer(buf, request_keys[i]);
+
 #elif WRITE_MODE
     init_buffer(buf, request_keys[i]);
-    encrypt(buf, sizeof(buf));
+    encrypt(buf);
 
     write_clnt(clnt, buf, request_keys[i]);
-#else
+
 #endif
 
-    if (i % (request_count / 20) == 0) {
-      printf("*");
-      fflush(stdout);
-    }
-  }
+#ifdef PROGRESS_BAR
+  double progress_ratio = (double) i / request_count;
+  int progress_percent = (int) (progress_ratio * 100);
+  int left_pad = (int) (progress_ratio * 50);
+  int right_pad = 50 - left_pad;
+  printf("\r%3d%% [%.*s%*s]", progress_percent, left_pad, PROGRESS_BAR right_pad, "");
+  fflush(stdout);
+#endif
 
   clnt_destroy(clnt);
 
