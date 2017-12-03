@@ -15,9 +15,14 @@ rpc_server: rpc_server.c
 	mkdir -p $(BIN_DIR)
 	$(CC) $(SERVER_DEFINES) $(CFLAGS) $< -o $(BIN_DIR)/$@ $(LDFLAGS)
 
-rpc_client: rpc_client.c
+rpc_client: rpc_client_read rpc_client_write
+
+rpc_client_read: rpc_client.c
 	mkdir -p $(BIN_DIR)
-	$(CC) $(CLIENT_READ_DEFINES)  $(CFLAGS) $< -o $(BIN_DIR)/$@ $(LDFLAGS)
+	$(CC) $(CLIENT_READ_DEFINES) $(CFLAGS) $< -o $(BIN_DIR)/$@ $(LDFLAGS)
+
+rpc_client_write: rpc_client.c
+	mkdir -p $(BIN_DIR)
 	$(CC) $(CLIENT_WRITE_DEFINES) $(CFLAGS) $< -o $(BIN_DIR)/$@ $(LDFLAGS)
 
 clean:
