@@ -5,20 +5,40 @@
 #include <sys/time.h>
 #include <math.h>
 #include <rpc/rpc.h>
+#include <openssl/rand.h>
+#include <openssl/des.h>
 #include "common.h"
 
+/* personal types */
+
+/* RPC function prototypes */
 void parse_input(int argc, char *argv[]);
 CLIENT *connect_server(char *host);
 void print_stats();
 void read_clnt(CLIENT *clnt, char *buffer, int key);
 void write_clnt(CLIENT *clnt, char *buffer, int key);
 
+/* Crypto function prototypes */
+void set_crypto_scheme();
+void no_setup();
+void no_encrypt(char *data, size_t data_size);
+void no_decrypt(char *data, size_t data_size);
+void des_setup();
+void des_encrypt(char *data, size_t data_size);
+void des_decrypt(char *data, size_t data_size);
+
+/* RPC global variables */
+static struct timeval time_out = { .tv_sec = 10L, .tv_usec = 0L };
 static double sum_of_response_time;
 static double sum_of_response_time_sqare;
 static int request_keys[DB_COUNT];
 static int request_count;
 
-struct timeval time_out = { .tv_sec = 10L, .tv_usec = 0L };
+/* Crypto global variables */
+enum CRYPTO_SCHEME { NONE, DES, 3DES, AES, DH, RSA };
+void (*setcrypt)(void);
+void (*encrypt)(char *, size_t);
+void (*decrypt)(char *, size_t);
 
 int main(int argc, char *argv[]) {
   char buf[DATA_SIZE];
@@ -27,15 +47,22 @@ int main(int argc, char *argv[]) {
 
   CLIENT *clnt = connect_server(argv[1]);
 
+  set_crypto_scheme(NONE);
+  set_crypt();
+
   int i;
   for (i = 0; i < request_count; i++) {
     usleep(100000);
+
 #ifdef READ_MODE
     read_clnt(clnt, buf, request_keys[i]);
+    decrypt(buf, sizeof(buf));
 #elif WRITE_MODE
-    write_clnt(clnt, buf, request_keys[i]);
+    encrypt(buf, sizeof(buf));
+    clnt(clnt, buf, request_keys[i]);
 #else
 #endif
+
     if (i % (request_count / 20) == 0) {
       printf("*");
       fflush(stdout);
@@ -144,3 +171,71 @@ void write_clnt(CLIENT *clnt, char *buffer, int key) {
     exit(EXIT_FAILURE);
   }
 }
+
+void set_crypto_scheme(enum CRYPTO_SCHEME crypto_scheme) {
+  switch (crypto_scheme) {
+    case DES:
+      setcrypt = des_setup;
+      encrypt = des_encrypt;
+      decrypt = des_decrypt;
+      break;
+
+    case NONE: default:
+      setcrypt = no_setup;
+      encrypt = no_encrypt;
+      decrypt = no_decrypt;
+      break;
+  }
+}
+
+void no_setup() { }
+
+void no_encrypt(char *data, size_t data_size) { }
+
+void no_decrypt(char *data, size_t data_size) { }
+
+static DES_cblock des_key;
+static DES_key_schedule des_keysched;
+static DES_cblock des_seed = { 0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10 };
+
+void des_setup() {
+  static int is_already_set = 0;
+
+  if (is_already_set++ > 0) {
+    fprintf(stderr, "Error: DES setup called twice");
+    exit(EXIT_FAILURE);
+  }
+
+  RAND_seed(des_seed, sizeof(des_seed) / sizeof(DES_cblock));
+  DES_random_key(&des_key);
+  DES_set_key((const_DES_cblock *) &des_key, &des_keysched);
+}
+
+void des_encrypt(char *data, size_t data_size) {
+  char *temp = (char *) malloc(data_size);
+
+  DES_ecb_encrypt(data, temp, &des_keysched, DES_ENCRYPT);
+
+  memcpy(data, temp, data_size);
+
+  free(temp);
+}
+
+void des_decrypt(char *data, size_t data_size) {
+  char *temp = (char *) malloc(data_size);
+
+  DES_ecb_encrypt(data, temp, &des_keysched, DES_DECRYPT);
+
+  memcpy(data, temp, data_size);
+
+  free(temp);
+}
+
+
+
+
+
+
+
+
+
