@@ -35,7 +35,7 @@ static int request_keys[DB_COUNT];
 static int request_count;
 
 /* Crypto global variables */
-enum CRYPTO_SCHEME { NONE, DES, 3DES, AES, DH, RSA };
+enum CRYPTO_SCHEME { NONE, DES, THREE_DES, AES, DH, RSA };
 void (*setcrypt)(void);
 void (*encrypt)(char *, size_t);
 void (*decrypt)(char *, size_t);
@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
   CLIENT *clnt = connect_server(argv[1]);
 
   set_crypto_scheme(NONE);
-  set_crypt();
+  setcrypt();
 
   int i;
   for (i = 0; i < request_count; i++) {
@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
     decrypt(buf, sizeof(buf));
 #elif WRITE_MODE
     encrypt(buf, sizeof(buf));
-    clnt(clnt, buf, request_keys[i]);
+    write_clnt(clnt, buf, request_keys[i]);
 #else
 #endif
 
