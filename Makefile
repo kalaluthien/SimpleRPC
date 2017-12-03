@@ -24,7 +24,7 @@ rpc_client_write: rpc_client.c
 	$(CC) $(CLIENT_WRITE_DEFINES) $(CFLAGS) $< -o $(BIN_DIR)/$@ $(LDFLAGS)
 
 clean:
-	rm rpc_server rpc_client_read rpc_client_write
+	rm bin/rpc_*
 
 reset:
 	git fetch && git reset --hard origin/master
