@@ -30,12 +30,19 @@ void des_setup();
 void des_encrypt(char *data);
 void des_decrypt(char *data);
 
-/* RPC global variables */
-static struct timeval time_out = { .tv_sec = 10L, .tv_usec = 0L };
+/* Statistics global variables */
 static double sum_of_response_time;
 static double sum_of_response_time_sqare;
+static double sum_of_encryption_time;
+static double sum_of_encryption_time_sqare;
+static double sum_of_decryption_time;
+static double sum_of_decryption_time_sqare;
+
+/* RPC global variables */
+static struct timeval time_out = { .tv_sec = 10L, .tv_usec = 0L };
 static int request_keys[DB_COUNT];
 static int request_count;
+
 
 /* Crypto global variables */
 enum CRYPTO_SCHEME { CS_NONE, CS_DES, CS_3DES, CS_AES, CS_DH, CS_RSA };
@@ -72,8 +79,8 @@ int main(int argc, char *argv[]) {
 
     progress_ratio = (double) (i + 1) / request_count;
     progress_percent = (int) (progress_ratio * 100);
-    num_done = (int) (progress_ratio * 50);
-    printf("\r %3d%% [%*s%*s]",
+    num_done = progress_percent / 2;
+    printf("\r%3d%% [%.*s%*s]",
            progress_percent, num_done, PROGRESS_BAR, 50 - num_done, "");
     fflush(stdout);
   }
@@ -139,9 +146,24 @@ void print_stats() {
   double var_response_time =
     (sum_of_response_time_sqare / request_count - mean_response_time * mean_response_time);
 
+  double mean_encryption_time = sum_of_encryption_time / request_count;
+  double var_encryption_time =
+    (sum_of_encryption_time_sqare / request_count - mean_encryption_time * mean_encryption_time);
+
+  double mean_decryption_time = sum_of_decryption_time / request_count;
+  double var_decryption_time =
+    (sum_of_decryption_time_sqare / request_count - mean_decryption_time * mean_decryption_time);
+
   printf("\n\n");
+
   printf("mean resopnse time = %.3lf us\n", mean_response_time * 1000000);
-  printf("standatd deviation = %.3lf us\n", sqrt(var_response_time) * 1000000);
+  printf("standatd deviation = %.3lf us\n\n", sqrt(var_response_time) * 1000000);
+
+  printf("mean encryption time = %.3lf us\n", mean_encryption_time * 1000000);
+  printf("standatd deviation = %.3lf us\n\n", sqrt(var_encryption_time) * 1000000);
+
+  printf("mean decryption time = %.3lf us\n", mean_decryption_time * 1000000);
+  printf("standatd deviation = %.3lf us\n\n", sqrt(var_decryption_time) * 1000000);
 }
 
 void read_clnt(CLIENT *clnt, char *buffer, int key) {
@@ -198,28 +220,24 @@ void set_crypto_scheme(enum CRYPTO_SCHEME crypto_scheme) {
 }
 
 void init_buffer(char *buffer, int key) {
-  srand(key);
+  srand(key + 2);
 
   int i;
   for (i = 0; i < DATA_SIZE; i++) {
-    buffer[i] = rand() % 128;
+    buffer[i] = rand() % ('Z' - 'A') + 'A';
   }
 }
 
 void check_buffer(char *buffer, int key) {
-  srand(key);
+  srand(key + 2);
 
-  int i, verified = 1;
+  int i, rand_val;
   for (i = 0; i < DATA_SIZE; i++) {
-    if (buffer[i] != (rand() % 128)) {
-      verified = 0;
-      break;
+    rand_val = rand() % ('Z' - 'A') / 'A';
+    if (buffer[i] != rand_val) {
+      fprintf(stderr, "Error: decryption verification faild\n");
+      exit(EXIT_FAILURE);
     }
-  }
-
-  if (!verified) {
-    fprintf(stderr, "Error: decryption verification faild\n");
-    exit(EXIT_FAILURE);
   }
 }
 
@@ -229,9 +247,8 @@ void none_encrypt(char *data) { }
 
 void none_decrypt(char *data) { }
 
-static DES_cblock des_key;
+static DES_cblock des_key = { 0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10 };
 static DES_key_schedule des_keysched;
-static DES_cblock des_seed = { 0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10 };
 
 void des_setup() {
   static int is_already_set = 0;
@@ -241,10 +258,7 @@ void des_setup() {
     exit(EXIT_FAILURE);
   }
 
-  RAND_seed(des_seed, sizeof(des_seed) / sizeof(DES_cblock));
-
-  DES_random_key(&des_key);
-  DES_set_key((const_DES_cblock *) &des_key, &des_keysched);
+  DES_set_key(&des_key, &des_keysched);
 }
 
 void des_encrypt(char *data) {
@@ -256,10 +270,16 @@ void des_encrypt(char *data) {
     exit(EXIT_FAILURE);
   }
 
+  clock_t time_begin = clock();
+
   int i;
-  for (i = 0; i < DATA_SIZE % sizeof(DES_cblock); i++) {
+  for (i = 0; i < DATA_SIZE / sizeof(DES_cblock); i++) {
     DES_ecb_encrypt(&in[i], &out[i], &des_keysched, DES_ENCRYPT);
   }
+
+  double encryption_time = (double) (clock() - time_begin) / CLOCKS_PER_SEC;
+  sum_of_encryption_time += encryption_time;
+  sum_of_encryption_time_sqare += encryption_time * encryption_time;
 
   memcpy(in, out, DATA_SIZE);
   free(out);
@@ -274,10 +294,16 @@ void des_decrypt(char *data) {
     exit(EXIT_FAILURE);
   }
 
+  clock_t time_begin = clock();
+
   int i;
-  for (i = 0; i < DATA_SIZE % sizeof(DES_cblock); i++) {
+  for (i = 0; i < DATA_SIZE / sizeof(DES_cblock); i++) {
     DES_ecb_encrypt(&in[i], &out[i], &des_keysched, DES_DECRYPT);
   }
+
+  double decryption_time = (double) (clock() - time_begin) / CLOCKS_PER_SEC;
+  sum_of_decryption_time += decryption_time;
+  sum_of_decryption_time_sqare += decryption_time * decryption_time;
 
   memcpy(in, out, DATA_SIZE);
   free(out);
