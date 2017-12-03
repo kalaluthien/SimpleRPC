@@ -25,3 +25,6 @@ rpc_client_write: rpc_client.c
 
 clean:
 	rm rpc_server rpc_client_read rpc_client_write
+
+reset:
+	git fetch && git reset --hard origin/master
