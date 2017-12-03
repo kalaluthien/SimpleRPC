@@ -9,13 +9,11 @@ LDFLAGS = -lm -lssl -lcrypto
 
 BIN_DIR = bin
 
-all: rpc_server rpc_client
+all: rpc_server rpc_client_read rpc_client_write
 
 rpc_server: rpc_server.c
 	mkdir -p $(BIN_DIR)
 	$(CC) $(SERVER_DEFINES) $(CFLAGS) $< -o $(BIN_DIR)/$@ $(LDFLAGS)
-
-rpc_client: rpc_client_read rpc_client_write
 
 rpc_client_read: rpc_client.c
 	mkdir -p $(BIN_DIR)
