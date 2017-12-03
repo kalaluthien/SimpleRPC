@@ -35,7 +35,7 @@ static int request_keys[DB_COUNT];
 static int request_count;
 
 /* Crypto global variables */
-enum CRYPTO_SCHEME { NONE, DES, THREE_DES, AES, DH, RSA };
+enum CRYPTO_SCHEME { CS_NONE, CS_DES, CS_3DES, CS_AES, CS_DH, CS_RSA };
 void (*setcrypt)(void);
 void (*encrypt)(char *, size_t);
 void (*decrypt)(char *, size_t);
@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
 
   CLIENT *clnt = connect_server(argv[1]);
 
-  set_crypto_scheme(NONE);
+  set_crypto_scheme(CS_NONE);
   setcrypt();
 
   int i;
@@ -174,13 +174,13 @@ void write_clnt(CLIENT *clnt, char *buffer, int key) {
 
 void set_crypto_scheme(enum CRYPTO_SCHEME crypto_scheme) {
   switch (crypto_scheme) {
-    case DES:
+    case CS_DES:
       setcrypt = des_setup;
       encrypt = des_encrypt;
       decrypt = des_decrypt;
       break;
 
-    case NONE: default:
+    case CS_NONE: default:
       setcrypt = no_setup;
       encrypt = no_encrypt;
       decrypt = no_decrypt;
