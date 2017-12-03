@@ -233,7 +233,7 @@ void check_buffer(char *buffer, int key) {
 
   int i, rand_val;
   for (i = 0; i < DATA_SIZE; i++) {
-    rand_val = rand() % ('Z' - 'A') / 'A';
+    rand_val = rand() % ('Z' - 'A') + 'A';
     if (buffer[i] != rand_val) {
       fprintf(stderr, "Error: decryption verification faild\n");
       exit(EXIT_FAILURE);
