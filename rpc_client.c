@@ -202,7 +202,7 @@ void des_setup() {
   static int is_already_set = 0;
 
   if (is_already_set++ > 0) {
-    fprintf(stderr, "Error: DES setup called twice");
+    fprintf(stderr, "Error: DES setup called twice\n");
     exit(EXIT_FAILURE);
   }
 
@@ -212,23 +212,36 @@ void des_setup() {
 }
 
 void des_encrypt(char *data, size_t data_size) {
-  char *temp = (char *) malloc(data_size);
+  DES_cblock *in = (DES_cblock *) data;
+  DES_cblock *out = (DES_cblock *) malloc(data_size);
 
-  DES_ecb_encrypt(data, temp, &des_keysched, DES_ENCRYPT);
+  if (data_size % sizeof(DES_cblock) != 0) {
+    fprintf(stderr, "Error: data size invalid (%lu)\n", data_size);
+    exit(EXIT_FAILURE);
+  }
 
-  memcpy(data, temp, data_size);
+  int i;
+  for (i = 0; i < data_size % sizeof(DES_cblock); i++) {
+    DES_ecb_encrypt(&in[i], &out[i], &des_keysched, DES_ENCRYPT);
+  }
 
-  free(temp);
+  memcpy(in, out, data_size);
+  free(out);
 }
 
 void des_decrypt(char *data, size_t data_size) {
-  char *temp = (char *) malloc(data_size);
+  DES_cblock *in = (DES_cblock *) data;
+  DES_cblock *out = (DES_cblock *) malloc(data_size);
 
-  DES_ecb_encrypt(data, temp, &des_keysched, DES_DECRYPT);
+  if (data_size % sizeof(DES_cblock) != 0) {
+    fprintf(stderr, "Error: data size invalid (%lu)\n", data_size);
+    exit(EXIT_FAILURE);
+  }
 
-  memcpy(data, temp, data_size);
+  DES_ecb_encrypt(&in[i], out[i], &des_keysched, DES_DECRYPT);
 
-  free(temp);
+  memcpy(in, out, data_size);
+  free(out);
 }
 
 

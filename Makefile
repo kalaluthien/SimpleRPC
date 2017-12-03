@@ -6,7 +6,7 @@ CLIENT_DEFINES = -DWRITE_MODE
 # CLIENT_DEFINES = -DWRITE_MODE
 
 CFLAGS = -g -Wall -O2
-LDFLAGS = -lm
+LDFLAGS = -lm -lssl -lcrypto
 
 all: rpc_server rpc_client
 
