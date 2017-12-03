@@ -254,7 +254,7 @@ void des_encrypt(char *data) {
   DES_cblock *out = (DES_cblock *) malloc(DATA_SIZE);
 
   if (DATA_SIZE % sizeof(DES_cblock) != 0) {
-    fprintf(stderr, "Error: data size invalid (%lu)\n", DATA_SIZE);
+    fprintf(stderr, "Error: data size invalid (%d)\n", DATA_SIZE);
     exit(EXIT_FAILURE);
   }
 
@@ -272,7 +272,7 @@ void des_decrypt(char *data) {
   DES_cblock *out = (DES_cblock *) malloc(DATA_SIZE);
 
   if (DATA_SIZE % sizeof(DES_cblock) != 0) {
-    fprintf(stderr, "Error: data size invalid (%lu)\n", DATA_SIZE);
+    fprintf(stderr, "Error: data size invalid (%d)\n", DATA_SIZE);
     exit(EXIT_FAILURE);
   }
 
