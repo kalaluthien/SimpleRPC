@@ -346,7 +346,7 @@ void three_des_encrypt(char *data) {
 
   int i;
   for (i = 0; i < DATA_SIZE / sizeof(DES_cblock); i++) {
-    DES_ecb2_encrypt(&in[i], &out[i], &des_keysched[0], &des_keysched[1] DES_ENCRYPT);
+    DES_ecb2_encrypt(&in[i], &out[i], &des_keysched[0], &des_keysched[1], DES_ENCRYPT);
   }
 
   double encryption_time = (double) (clock() - time_begin) / CLOCKS_PER_SEC;
