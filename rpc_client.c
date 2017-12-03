@@ -74,9 +74,9 @@ int main(int argc, char *argv[]) {
 #ifdef PROGRESS_BAR
   double progress_ratio = (double) i / request_count;
   int progress_percent = (int) (progress_ratio * 100);
-  int left_pad = (int) (progress_ratio * 50);
-  int right_pad = 50 - left_pad;
-  printf("\r%3d%% [%.*s%*s]", progress_percent, left_pad, PROGRESS_BAR right_pad, "");
+  int num_done = (int) (progress_ratio * 50);
+  int num_left = 50 - num_done;
+  printf("\r %3d%% [%*s%*s]", progress_percent, num_done, PROGRESS_BAR, num_left, "");
   fflush(stdout);
 #endif
 
