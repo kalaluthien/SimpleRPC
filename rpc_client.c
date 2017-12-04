@@ -74,15 +74,20 @@ static void (*encrypt)(char *);
 static void (*decrypt)(char *);
 
 /* Crypto global variables */
-static DES_cblock des_key[] = {
+static DES_cblock des_key[2] = {
   { 0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10 },
   { 0x76, 0x98, 0xBA, 0x32, 0x10, 0xFE, 0xDC, 0x54 }
 };
 
 static DES_key_schedule des_keysched[2];
 
-static unsigned char aes_cipher_key[] = {
+static unsigned char aes_cipher_key[AES_BLOCK_SIZE] = {
   0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF
+};
+
+static unsigned char iv_aes[AES_BLOCK_SIZE] = {
+  0xCD, 0x67, 0xEF, 0x01, 0xAB, 0x89, 0x23, 0x45,
+  0xDC, 0x76, 0xFE, 0x10, 0xBA, 0x98, 0x23, 0x54
 };
 
 static AES_KEY aes_key[2];
@@ -433,8 +438,8 @@ void aes_setup() {
 }
 
 void aes_encrypt(char *data) {
-  unsigned char (*in)[AES_BLOCK_SIZE] = (unsigned char (*)[AES_BLOCK_SIZE]) data;
-  unsigned char (*out)[AES_BLOCK_SIZE] = (unsigned char (*)[AES_BLOCK_SIZE]) malloc(DATA_SIZE);
+  unsigned char *in = (unsigned char *) data;
+  unsigned char *out = (unsigned char *) malloc(DATA_SIZE);
 
   if (DATA_SIZE % AES_BLOCK_SIZE != 0) {
     fprintf(stderr, "Error: data size invalid (%d)\n", DATA_SIZE);
@@ -443,10 +448,7 @@ void aes_encrypt(char *data) {
 
   clock_t time_begin = clock();
 
-  int i;
-  for (i = 0; i < DATA_SIZE / AES_BLOCK_SIZE; i++) {
-    AES_cbc_encrypt(&in[i], &out[i], &aes_key[0], AES_ENCRYPT);
-  }
+  AES_cbc_encrypt(in, out, DATA_SIZE, &aes_key[0], iv_aes, AES_ENCRYPT);
 
   double cryption_time = (double) (clock() - time_begin) / CLOCKS_PER_SEC;
   sum_of_cryption_time += cryption_time;
@@ -457,8 +459,8 @@ void aes_encrypt(char *data) {
 }
 
 void aes_decrypt(char *data) {
-  unsigned char (*in)[AES_BLOCK_SIZE] = (unsigned char (*)[AES_BLOCK_SIZE]) data;
-  unsigned char (*out)[AES_BLOCK_SIZE] = (unsigned char (*)[AES_BLOCK_SIZE]) malloc(DATA_SIZE);
+  unsigned char *in = (unsigned char *) data;
+  unsigned char *out = (unsigned char *) malloc(DATA_SIZE);
 
   if (DATA_SIZE % AES_BLOCK_SIZE != 0) {
     fprintf(stderr, "Error: data size invalid (%d)\n", DATA_SIZE);
@@ -467,10 +469,7 @@ void aes_decrypt(char *data) {
 
   clock_t time_begin = clock();
 
-  int i;
-  for (i = 0; i < DATA_SIZE / AES_BLOCK_SIZE; i++) {
-    AES_cbc_encrypt(&in[i], &out[i], &aes_key[1], AES_DECRYPT);
-  }
+  AES_cbc_encrypt(in, out, DATA_SIZE, &aes_key[1], iv_aes, AES_DECRYPT);
 
   double cryption_time = (double) (clock() - time_begin) / CLOCKS_PER_SEC;
   sum_of_cryption_time += cryption_time;
