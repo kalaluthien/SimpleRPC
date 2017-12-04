@@ -70,12 +70,18 @@ static void (*encrypt)(char *);
 static void (*decrypt)(char *);
 
 /* Crypto global variables */
-static DES_cblock des_key[2] = {
+static DES_cblock des_key[] = {
   { 0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10 },
   { 0x76, 0x98, 0xBA, 0x32, 0x10, 0xFE, 0xDC, 0x54 }
 };
 
 static DES_key_schedule des_keysched[2];
+
+static unsigned char aes_cipher_key[] = {
+  0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF
+};
+
+static AES_KEY aes_key[2];
 
 
 int main(int argc, char *argv[]) {
@@ -87,7 +93,7 @@ int main(int argc, char *argv[]) {
 
   CLIENT *clnt = connect_server(argv[1]);
 
-  set_crypto_scheme(CS_TDES);
+  set_crypto_scheme(CS_AES);
   setcrypt();
 
   for (i = 0; i < request_count; i++) {
@@ -418,12 +424,44 @@ void tdes_decrypt(char *data) {
 }
 
 void aes_setup() {
+  ASE_set_encrypt_key(aes_cipher_key, sizeof(aes_cipher_key), &aes_key[0]);
+  ASE_set_encrypt_key(aes_cipher_key, sizeof(aes_cipher_key), &aes_key[1]);
 }
 
 void aes_encrypt(char *data) {
+  if (DATA_SIZE % AES_BLOCK_SIZE != 0) {
+    fprintf(stderr, "Error: data size invalid (%d)\n", DATA_SIZE);
+    exit(EXIT_FAILURE);
+  }
+
+  clock_t time_begin = clock();
+
+  int i;
+  for (i = 0; i < DATA_SIZE / AES_BLOCK_SIZE; i++) {
+    AES_cbc_encrypt(&in[i], &out[i], &aes_key[0], AES_ENCRYPT);
+  }
+
+  double cryption_time = (double) (clock() - time_begin) / CLOCKS_PER_SEC;
+  sum_of_cryption_time += cryption_time;
+  sum_of_cryption_time_sqare += cryption_time * cryption_time;
 }
 
 void aes_decrypt(char *data) {
+  if (DATA_SIZE % AES_BLOCK_SIZE != 0) {
+    fprintf(stderr, "Error: data size invalid (%d)\n", DATA_SIZE);
+    exit(EXIT_FAILURE);
+  }
+
+  clock_t time_begin = clock();
+
+  int i;
+  for (i = 0; i < DATA_SIZE / AES_BLOCK_SIZE; i++) {
+    AES_cbc_encrypt(&in[i], &out[i], &aes_key[1], AES_DECRYPT);
+  }
+
+  double cryption_time = (double) (clock() - time_begin) / CLOCKS_PER_SEC;
+  sum_of_cryption_time += cryption_time;
+  sum_of_cryption_time_sqare += cryption_time * cryption_time;
 }
 
 void dh_setup() {
