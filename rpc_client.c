@@ -5,9 +5,13 @@
 #include <time.h>
 #include <sys/time.h>
 #include <math.h>
+
 #include <rpc/rpc.h>
+
 #include <openssl/rand.h>
 #include <openssl/des.h>
+#include <openssl/aes.h>
+
 #include "common.h"
 
 #define PROGRESS_BAR "##################################################"
