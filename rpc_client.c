@@ -11,11 +11,14 @@
 #include "common.h"
 
 #define PROGRESS_BAR "##################################################"
+#define MAGIC 137
+
+/* Util function prototypes */
+void parse_input(int argc, char *argv[]);
+void print_stats();
 
 /* RPC function prototypes */
-void parse_input(int argc, char *argv[]);
 CLIENT *connect_server(char *host);
-void print_stats();
 void read_clnt(CLIENT *clnt, char *buffer, int key);
 void write_clnt(CLIENT *clnt, char *buffer, int key);
 
@@ -23,35 +26,57 @@ void write_clnt(CLIENT *clnt, char *buffer, int key);
 void set_crypto_scheme();
 void init_buffer(char *buffer, int key);
 void check_buffer(char *buffer, int key);
+
 void none_setup();
 void none_encrypt(char *data);
 void none_decrypt(char *data);
+
 void des_setup();
 void des_encrypt(char *data);
 void des_decrypt(char *data);
-void three_des_setup();
-void three_des_encrypt(char *data);
-void three_des_decrypt(char *data);
+
+void tdes_setup();
+void tdes_encrypt(char *data);
+void tdes_decrypt(char *data);
+
+void aes_setup();
+void aes_encrypt(char *data);
+void aes_decrypt(char *data);
+
+void dh_setup();
+void dh_encrypt(char *data);
+void dh_decrypt(char *data);
+
+void rsa_setup();
+void rsa_encrypt(char *data);
+void rsa_decrypt(char *data);
+
 
 /* Statistics global variables */
 static double sum_of_response_time;
 static double sum_of_response_time_sqare;
-static double sum_of_encryption_time;
-static double sum_of_encryption_time_sqare;
-static double sum_of_decryption_time;
-static double sum_of_decryption_time_sqare;
+static double sum_of_cryption_time;
+static double sum_of_cryption_time_sqare;
 
 /* RPC global variables */
 static struct timeval time_out = { .tv_sec = 10L, .tv_usec = 0L };
 static int request_keys[DB_COUNT];
 static int request_count;
 
+/* Crypto fuction pointers */
+enum CRYPTO_SCHEME { CS_NONE, CS_DES, CS_TDES, CS_AES, CS_DH, CS_RSA };
+static void (*setcrypt)(void);
+static void (*encrypt)(char *);
+static void (*decrypt)(char *);
 
 /* Crypto global variables */
-enum CRYPTO_SCHEME { CS_NONE, CS_DES, CS_3_DES, CS_AES, CS_DH, CS_RSA };
-void (*setcrypt)(void);
-void (*encrypt)(char *);
-void (*decrypt)(char *);
+static DES_cblock des_key[2] = {
+  { 0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10 },
+  { 0x76, 0x98, 0xBA, 0x32, 0x10, 0xFE, 0xDC, 0x54 }
+};
+
+static DES_key_schedule des_keysched[2];
+
 
 int main(int argc, char *argv[]) {
   int i, progress_percent, num_done;
@@ -62,7 +87,7 @@ int main(int argc, char *argv[]) {
 
   CLIENT *clnt = connect_server(argv[1]);
 
-  set_crypto_scheme(CS_DES);
+  set_crypto_scheme(CS_TDES);
   setcrypt();
 
   for (i = 0; i < request_count; i++) {
@@ -95,6 +120,8 @@ int main(int argc, char *argv[]) {
   return 0;
 }
 
+
+/* Util functions */
 void parse_input(int argc, char *argv[]) {
   if (argc != 3) {
     fprintf(stderr, "Usage: ./rpc_client hostname tracefile\n");
@@ -117,6 +144,26 @@ void parse_input(int argc, char *argv[]) {
   fclose(trace_fp);
 }
 
+void print_stats() {
+  double mean_response_time = sum_of_response_time / request_count;
+  double var_response_time =
+    (sum_of_response_time_sqare / request_count - mean_response_time * mean_response_time);
+
+  double mean_cryption_time = sum_of_cryption_time / request_count;
+  double var_cryption_time =
+    (sum_of_cryption_time_sqare / request_count - mean_cryption_time * mean_cryption_time);
+
+  printf("\n\n");
+
+  printf("mean resopnse time = %.3lf us\n", mean_response_time * 1000000);
+  printf("standatd deviation = %.3lf us\n\n", sqrt(var_response_time) * 1000000);
+
+  printf("mean cryption time = %.3lf us\n", mean_cryption_time * 1000000);
+  printf("standatd deviation = %.3lf us\n\n", sqrt(var_cryption_time) * 1000000);
+}
+
+
+/* RPC functions */
 CLIENT *connect_server(char *host) {
   CLIENT *clnt;
   if ((clnt = clnt_create(host, TEST_PROG, TEST_VERS, "udp")) == NULL) {
@@ -142,31 +189,6 @@ CLIENT *connect_server(char *host) {
          port);
 
   return clnt;
-}
-
-void print_stats() {
-  double mean_response_time = sum_of_response_time / request_count;
-  double var_response_time =
-    (sum_of_response_time_sqare / request_count - mean_response_time * mean_response_time);
-
-  double mean_encryption_time = sum_of_encryption_time / request_count;
-  double var_encryption_time =
-    (sum_of_encryption_time_sqare / request_count - mean_encryption_time * mean_encryption_time);
-
-  double mean_decryption_time = sum_of_decryption_time / request_count;
-  double var_decryption_time =
-    (sum_of_decryption_time_sqare / request_count - mean_decryption_time * mean_decryption_time);
-
-  printf("\n\n");
-
-  printf("mean resopnse time = %.3lf us\n", mean_response_time * 1000000);
-  printf("standatd deviation = %.3lf us\n\n", sqrt(var_response_time) * 1000000);
-
-  printf("mean encryption time = %.3lf us\n", mean_encryption_time * 1000000);
-  printf("standatd deviation = %.3lf us\n\n", sqrt(var_encryption_time) * 1000000);
-
-  printf("mean decryption time = %.3lf us\n", mean_decryption_time * 1000000);
-  printf("standatd deviation = %.3lf us\n\n", sqrt(var_decryption_time) * 1000000);
 }
 
 void read_clnt(CLIENT *clnt, char *buffer, int key) {
@@ -206,6 +228,8 @@ void write_clnt(CLIENT *clnt, char *buffer, int key) {
   }
 }
 
+
+/* Crypto functions */
 void set_crypto_scheme(enum CRYPTO_SCHEME crypto_scheme) {
   switch (crypto_scheme) {
     case CS_DES:
@@ -214,10 +238,28 @@ void set_crypto_scheme(enum CRYPTO_SCHEME crypto_scheme) {
       decrypt = des_decrypt;
       break;
 
-    case CS_3_DES:
-      setcrypt = three_des_setup;
-      encrypt = three_des_encrypt;
-      decrypt = three_des_decrypt;
+    case CS_TDES:
+      setcrypt = tdes_setup;
+      encrypt = tdes_encrypt;
+      decrypt = tdes_decrypt;
+      break;
+
+    case CS_AES:
+      setcrypt = aes_setup;
+      encrypt = aes_encrypt;
+      decrypt = aes_decrypt;
+      break;
+
+    case CS_DH:
+      setcrypt = dh_setup;
+      encrypt = dh_encrypt;
+      decrypt = dh_decrypt;
+      break;
+
+    case CS_RSA:
+      setcrypt = rsa_setup;
+      encrypt = rsa_encrypt;
+      decrypt = rsa_decrypt;
       break;
 
     case CS_NONE: default:
@@ -229,7 +271,7 @@ void set_crypto_scheme(enum CRYPTO_SCHEME crypto_scheme) {
 }
 
 void init_buffer(char *buffer, int key) {
-  srand(key + 2);
+  srand(key + MAGIC);
 
   int i;
   for (i = 0; i < DATA_SIZE; i++) {
@@ -238,7 +280,7 @@ void init_buffer(char *buffer, int key) {
 }
 
 void check_buffer(char *buffer, int key) {
-  srand(key + 2);
+  srand(key + MAGIC);
 
   int i, rand_val;
   for (i = 0; i < DATA_SIZE; i++) {
@@ -250,17 +292,11 @@ void check_buffer(char *buffer, int key) {
   }
 }
 
-void none_setup() { }
+void none_setup() { /* Do nothing */ }
 
-void none_encrypt(char *data) { }
+void none_encrypt(char *data) { /* Do nothing */ }
 
-void none_decrypt(char *data) { }
-
-static DES_cblock des_key[2] = {
-  { 0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10 },
-  { 0x76, 0x98, 0xBA, 0x32, 0x10, 0xFE, 0xDC, 0x54 }
-};
-static DES_key_schedule des_keysched[2];
+void none_decrypt(char *data) { /* Do nothing */ }
 
 void des_setup() {
   static int is_already_set = 0;
@@ -289,9 +325,9 @@ void des_encrypt(char *data) {
     DES_ecb_encrypt(&in[i], &out[i], &des_keysched[0], DES_ENCRYPT);
   }
 
-  double encryption_time = (double) (clock() - time_begin) / CLOCKS_PER_SEC;
-  sum_of_encryption_time += encryption_time;
-  sum_of_encryption_time_sqare += encryption_time * encryption_time;
+  double cryption_time = (double) (clock() - time_begin) / CLOCKS_PER_SEC;
+  sum_of_cryption_time += cryption_time;
+  sum_of_cryption_time_sqare += cryption_time * cryption_time;
 
   memcpy(in, out, DATA_SIZE);
   free(out);
@@ -313,15 +349,15 @@ void des_decrypt(char *data) {
     DES_ecb_encrypt(&in[i], &out[i], &des_keysched[0], DES_DECRYPT);
   }
 
-  double decryption_time = (double) (clock() - time_begin) / CLOCKS_PER_SEC;
-  sum_of_decryption_time += decryption_time;
-  sum_of_decryption_time_sqare += decryption_time * decryption_time;
+  double cryption_time = (double) (clock() - time_begin) / CLOCKS_PER_SEC;
+  sum_of_cryption_time += cryption_time;
+  sum_of_cryption_time_sqare += cryption_time * cryption_time;
 
   memcpy(in, out, DATA_SIZE);
   free(out);
 }
 
-void three_des_setup() {
+void tdes_setup() {
   static int is_already_set = 0;
 
   if (is_already_set++ > 0) {
@@ -333,7 +369,7 @@ void three_des_setup() {
   DES_set_key(&des_key[1], &des_keysched[1]);
 }
 
-void three_des_encrypt(char *data) {
+void tdes_encrypt(char *data) {
   DES_cblock *in = (DES_cblock *) data;
   DES_cblock *out = (DES_cblock *) malloc(DATA_SIZE);
 
@@ -349,15 +385,15 @@ void three_des_encrypt(char *data) {
     DES_ecb2_encrypt(&in[i], &out[i], &des_keysched[0], &des_keysched[1], DES_ENCRYPT);
   }
 
-  double encryption_time = (double) (clock() - time_begin) / CLOCKS_PER_SEC;
-  sum_of_encryption_time += encryption_time;
-  sum_of_encryption_time_sqare += encryption_time * encryption_time;
+  double cryption_time = (double) (clock() - time_begin) / CLOCKS_PER_SEC;
+  sum_of_cryption_time += cryption_time;
+  sum_of_cryption_time_sqare += cryption_time * cryption_time;
 
   memcpy(in, out, DATA_SIZE);
   free(out);
 }
 
-void three_des_decrypt(char *data) {
+void tdes_decrypt(char *data) {
   DES_cblock *in = (DES_cblock *) data;
   DES_cblock *out = (DES_cblock *) malloc(DATA_SIZE);
 
@@ -373,10 +409,37 @@ void three_des_decrypt(char *data) {
     DES_ecb2_encrypt(&in[i], &out[i], &des_keysched[0], &des_keysched[1], DES_DECRYPT);
   }
 
-  double decryption_time = (double) (clock() - time_begin) / CLOCKS_PER_SEC;
-  sum_of_decryption_time += decryption_time;
-  sum_of_decryption_time_sqare += decryption_time * decryption_time;
+  double cryption_time = (double) (clock() - time_begin) / CLOCKS_PER_SEC;
+  sum_of_cryption_time += cryption_time;
+  sum_of_cryption_time_sqare += cryption_time * cryption_time;
 
   memcpy(in, out, DATA_SIZE);
   free(out);
+}
+
+void aes_setup() {
+}
+
+void aes_encrypt(char *data) {
+}
+
+void aes_decrypt(char *data) {
+}
+
+void dh_setup() {
+}
+
+void dh_encrypt(char *data) {
+}
+
+void dh_decrypt(char *data) {
+}
+
+void rsa_setup() {
+}
+
+void rsa_encrypt(char *data) {
+}
+
+void rsa_decrypt(char *data) {
 }
