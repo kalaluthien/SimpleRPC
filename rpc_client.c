@@ -429,6 +429,9 @@ void aes_setup() {
 }
 
 void aes_encrypt(char *data) {
+  unsigned char (*in)[AES_BLOCK_SIZE] = (unsigned char (*)[AES_BLOCK_SIZE]) data;
+  unsigned char (*out)[AES_BLOCK_SIZE] = (unsigned char (*)[AES_BLOCK_SIZE]) malloc(DATA_SIZE);
+
   if (DATA_SIZE % AES_BLOCK_SIZE != 0) {
     fprintf(stderr, "Error: data size invalid (%d)\n", DATA_SIZE);
     exit(EXIT_FAILURE);
@@ -444,9 +447,15 @@ void aes_encrypt(char *data) {
   double cryption_time = (double) (clock() - time_begin) / CLOCKS_PER_SEC;
   sum_of_cryption_time += cryption_time;
   sum_of_cryption_time_sqare += cryption_time * cryption_time;
+
+  memcpy(in, out, DATA_SIZE);
+  free(out);
 }
 
 void aes_decrypt(char *data) {
+  unsigned char (*in)[AES_BLOCK_SIZE] = (unsigned char (*)[AES_BLOCK_SIZE]) data;
+  unsigned char (*out)[AES_BLOCK_SIZE] = (unsigned char (*)[AES_BLOCK_SIZE]) malloc(DATA_SIZE);
+
   if (DATA_SIZE % AES_BLOCK_SIZE != 0) {
     fprintf(stderr, "Error: data size invalid (%d)\n", DATA_SIZE);
     exit(EXIT_FAILURE);
@@ -462,6 +471,9 @@ void aes_decrypt(char *data) {
   double cryption_time = (double) (clock() - time_begin) / CLOCKS_PER_SEC;
   sum_of_cryption_time += cryption_time;
   sum_of_cryption_time_sqare += cryption_time * cryption_time;
+
+  memcpy(in, out, DATA_SIZE);
+  free(out);
 }
 
 void dh_setup() {
