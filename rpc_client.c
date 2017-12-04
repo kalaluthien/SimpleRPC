@@ -433,8 +433,8 @@ void tdes_decrypt(char *data) {
 }
 
 void aes_setup() {
-  ASE_set_encrypt_key(aes_cipher_key, sizeof(aes_cipher_key), &aes_key[0]);
-  ASE_set_encrypt_key(aes_cipher_key, sizeof(aes_cipher_key), &aes_key[1]);
+  AES_set_encrypt_key(aes_cipher_key, 128, &aes_key[0]);
+  AES_set_decrypt_key(aes_cipher_key, 128, &aes_key[1]);
 }
 
 void aes_encrypt(char *data) {
