@@ -97,7 +97,6 @@ static unsigned char iv_aes[AES_BLOCK_SIZE] = {
 };
 static AES_KEY aes_key[2];
 
-static DH *dh_client;
 static unsigned char *dh_key;
 
 static RSA *rsa_val;
@@ -501,7 +500,7 @@ void dh_setup(CLIENT *clnt) {
   DH_generate_key(dh_client);
 
   BIGNUM *client_pub_key = dh_client->pub_key;
-  BIGNUM *server_pub_key;
+  BIGNUM *server_pub_key = (BIGNUM *) malloc(sizeof(BIGNUM));
 
   enum clnt_stat stat = clnt_call(clnt, TEST_HSOP,
                                   (xdrproc_t) xdr_handshake, (char *) client_pub_key,
@@ -518,6 +517,7 @@ void dh_setup(CLIENT *clnt) {
   DH_compute_key(dh_key, server_pub_key, dh_client);
 
   fclose(fpem);
+  free(server_pub_key);
 
   handshake_time = (double) (clock() - time_begin) / CLOCKS_PER_SEC;
 
