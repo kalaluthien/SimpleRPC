@@ -104,8 +104,6 @@ int main(int argc, char *argv[]) {
   get_host_status();
 #endif
 
-  dh_setup();
-
   if (registerrpc(TEST_PROG, TEST_VERS, TEST_RDOP, read_rpc,
                   (xdrproc_t) xdr_int, (xdrproc_t) xdr_read) < 0) {
     fprintf(stderr, "registering read_rpc faild\n");
@@ -204,7 +202,7 @@ void write_rpc(struct wb *blockp) {
 #endif
 }
 
-BIGNUM *handshake_rpc(BIGNUM *dh_client) {
+BIGNUM *handshake_rpc(BIGNUM *client_pub_key) {
 #ifdef LOG_ENABLE
   printf("handshake_rpc requested\n");
 #endif
@@ -214,8 +212,8 @@ BIGNUM *handshake_rpc(BIGNUM *dh_client) {
   DH *dh_server = PEM_read_DHparams(fpem, NULL, NULL, NULL);
   DH_generate_key(dh_server);
 
-  unsigned char *dh_key = (unsigned char *) malloc(DH_size(dh_erver));
-  DH_compute_key(dh_key, dh_client->pub_key, dh_server);
+  unsigned char *dh_key = (unsigned char *) malloc(DH_size(dh_server));
+  DH_compute_key(dh_key, client_pub_key, dh_server);
 
   free(dh_key);
   fclose(fpem);
