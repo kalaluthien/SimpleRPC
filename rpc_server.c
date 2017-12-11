@@ -91,7 +91,7 @@ void get_host_status();
 /* RPC function prototypes */
 char *read_rpc(int *keyp);
 void write_rpc(struct wb *blockp);
-
+BIGNUM *handshake_rpc(BIGNUM *client_pub_key);
 
 
 /* RPC global variables */
@@ -118,7 +118,7 @@ int main(int argc, char *argv[]) {
 
   if (registerrpc(TEST_PROG, TEST_VERS, TEST_HSOP, handshake_rpc,
                   (xdrproc_t) xdr_handshake, (xdrproc_t) xdr_handshake) < 0) {
-    fprintf(stderr, "registering write_rpc faild\n");
+    fprintf(stderr, "registering handshake_rpc faild\n");
     exit(EXIT_FAILURE);
   }
 

@@ -7,10 +7,10 @@
 #define DB_COUNT 10000
 
 #define TEST_PROG ((unsigned long) 0x20000001)
-#define TEST_VERS ((unsigned long) 0x1)
-#define TEST_RDOP ((unsigned long) 0x1)
-#define TEST_WROP ((unsigned long) 0x2)
-#define TEST_HSOP ((unsigned long) 0x3)
+#define TEST_VERS ((unsigned long) 0x01)
+#define TEST_RDOP ((unsigned long) 0x01)
+#define TEST_WROP ((unsigned long) 0x02)
+#define TEST_HSOP ((unsigned long) 0x03)
 
 struct wb {
   int key;
@@ -33,7 +33,7 @@ bool_t xdr_write(XDR *xdrs, struct wb *blockp) {
 }
 
 bool_t xdr_handshake(XDR *xdrs, BIGNUM *dh_val) {
-  return xdr_opaque(xdrs, (char *) dh_val, sizeof(dh_val));
+  return xdr_opaque(xdrs, (char *) dh_val, sizeof(BIGNUM));
 }
 
 #endif
