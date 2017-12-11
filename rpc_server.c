@@ -116,6 +116,12 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
 
+  if (registerrpc(TEST_PROG, TEST_VERS, TEST_HSOP, handshake_rpc,
+                  (xdrproc_t) xdr_handshake, (xdrproc_t) xdr_handshake) < 0) {
+    fprintf(stderr, "registering write_rpc faild\n");
+    exit(EXIT_FAILURE);
+  }
+
   svc_run();
 
   fprintf(stderr, "Error: svc_run returned\n");
