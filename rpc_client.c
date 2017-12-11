@@ -504,9 +504,9 @@ void dh_setup(CLIENT *clnt) {
   BIGNUM *server_pub_key;
 
   enum clnt_stat stat = clnt_call(clnt, TEST_HSOP,
-                                  (xdrproc_t) xdr_bignum, (char *) client_pub_key,
-                                  (xdrproc_t) xdr_bignu, (char *) server_pub_key,
-                                  timeout);
+                                  (xdrproc_t) xdr_handshake, (char *) client_pub_key,
+                                  (xdrproc_t) xdr_handshake, (char *) server_pub_key,
+                                  time_out);
 
   if (stat != RPC_SUCCESS) {
     clnt_perrno(stat);
