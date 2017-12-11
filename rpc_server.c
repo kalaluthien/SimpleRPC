@@ -5,16 +5,21 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+
 #include <rpc/rpc.h>
+
+#include <openssl/dh.h>
+#include <openssl/pem.h>
+
 #include "common.h"
 
-#define LOCK_PREFIX "lock; "
-#define ENDL "\n\t"
-
-static FILE *db;
+/* personal LOCK implementation in intel x86_64 */
 static int rlock;
 static int glock;
 static int count;
+
+#define LOCK_PREFIX "lock; "
+#define ENDL "\n\t"
 
 #define read_aquire() \
 do { \
@@ -78,16 +83,28 @@ do { \
   ); \
 } while(0)
 
+
+/* Utility function prototypes */
 void parse_argument(int argc, char *argv[]);
 void get_host_status();
+
+/* RPC function prototypes */
 char *read_rpc(int *keyp);
 void write_rpc(struct wb *blockp);
+
+
+
+/* RPC global variables */
+static FILE *db;
+
 
 int main(int argc, char *argv[]) {
   parse_argument(argc, argv);
 #ifdef LOG_ENABLE
   get_host_status();
 #endif
+
+  dh_setup();
 
   if (registerrpc(TEST_PROG, TEST_VERS, TEST_RDOP, read_rpc,
                   (xdrproc_t) xdr_int, (xdrproc_t) xdr_read) < 0) {
@@ -107,6 +124,7 @@ int main(int argc, char *argv[]) {
   return 0;
 }
 
+/* Utility functions */
 void parse_argument(int argc, char *argv[]) {
   if (argc != 2) {
     fprintf(stderr, "Usage: ./rpc_server filename\n");
@@ -141,6 +159,7 @@ void get_host_status() {
   }
 }
 
+/* RPC functions */
 char *read_rpc(int *keyp) {
   static char buffer[DATA_SIZE];
   int key = *keyp;
@@ -183,4 +202,27 @@ void write_rpc(struct wb *blockp) {
 #ifdef LOG_ENABLE
   printf("write_rpc(%d) retured\n", key);
 #endif
+}
+
+BIGNUM *handshake_rpc(BIGNUM *dh_client) {
+#ifdef LOG_ENABLE
+  printf("handshake_rpc requested\n");
+#endif
+
+  FILE *fpem = fopen("dh1024.pem", "r");
+
+  DH *dh_server = PEM_read_DHparams(fpem, NULL, NULL, NULL);
+  DH_generate_key(dh_server);
+
+  unsigned char *dh_key = (unsigned char *) malloc(DH_size(dh_erver));
+  DH_compute_key(dh_key, dh_client->pub_key, dh_server);
+
+  free(dh_key);
+  fclose(fpem);
+
+#ifdef LOG_ENABLE
+  printf("handshake_rpc returned\n");
+#endif
+
+  return dh_server->pub_key;
 }

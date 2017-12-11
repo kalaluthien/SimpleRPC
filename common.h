@@ -10,16 +10,18 @@
 #define TEST_VERS ((unsigned long) 0x1)
 #define TEST_RDOP ((unsigned long) 0x1)
 #define TEST_WROP ((unsigned long) 0x2)
-
-bool_t xdr_read(XDR *xdrs, char *buffer) {
-  return xdr_vector(xdrs, buffer, DATA_SIZE,
-                    sizeof(char), (xdrproc_t) xdr_char);
-}
+#define TEST_HSOP ((unsigned long) 0x3)
 
 struct wb {
   int key;
   char data[DATA_SIZE];
 };
+
+
+bool_t xdr_read(XDR *xdrs, char *buffer) {
+  return xdr_vector(xdrs, buffer, DATA_SIZE,
+                    sizeof(char), (xdrproc_t) xdr_char);
+}
 
 bool_t xdr_write(XDR *xdrs, struct wb *blockp) {
   if (!xdr_int(xdrs, &blockp->key)) {
@@ -28,6 +30,10 @@ bool_t xdr_write(XDR *xdrs, struct wb *blockp) {
 
   return xdr_vector(xdrs, blockp->data, DATA_SIZE,
                     sizeof(char), (xdrproc_t) xdr_char);
+}
+
+bool_t xdr_handshake(XDR *xdrs, BIGNUM *dh_val) {
+  return xdr_opaque(xdrs, (char *) dh_val, sizeof(dh_val));
 }
 
 #endif

@@ -11,13 +11,18 @@
 #include <openssl/rand.h>
 #include <openssl/des.h>
 #include <openssl/aes.h>
+#include <openssl/dh.h>
+#include <openssl/pem.h>
+#include <openssl/rsa.h>
+#include <openssl/bn.h>
 
 #include "common.h"
 
 #define PROGRESS_BAR "##################################################"
 #define MAGIC 137
+#define RSA_EXP 3
 
-/* Util function prototypes */
+/* Utility function prototypes */
 void parse_input(int argc, char *argv[]);
 void print_stats();
 
@@ -59,8 +64,11 @@ void rsa_decrypt(char *data);
 /* Statistics global variables */
 static double sum_of_response_time;
 static double sum_of_response_time_sqare;
+
 static double sum_of_cryption_time;
 static double sum_of_cryption_time_sqare;
+
+static double handshake_time;
 
 /* RPC global variables */
 static struct timeval time_out = { .tv_sec = 10L, .tv_usec = 0L };
@@ -69,7 +77,7 @@ static int request_count;
 
 /* Crypto fuction pointers */
 enum CRYPTO_SCHEME { CS_NONE, CS_DES, CS_TDES, CS_AES, CS_DH, CS_RSA };
-static void (*setcrypt)(void);
+static void (*setcrypt)(CLIENT *);
 static void (*encrypt)(char *);
 static void (*decrypt)(char *);
 
@@ -78,19 +86,21 @@ static DES_cblock des_key[2] = {
   { 0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10 },
   { 0x76, 0x98, 0xBA, 0x32, 0x10, 0xFE, 0xDC, 0x54 }
 };
-
 static DES_key_schedule des_keysched[2];
 
 static unsigned char aes_cipher_key[AES_BLOCK_SIZE] = {
   0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF
 };
-
 static unsigned char iv_aes[AES_BLOCK_SIZE] = {
   0xCD, 0x67, 0xEF, 0x01, 0xAB, 0x89, 0x23, 0x45,
   0xDC, 0x76, 0xFE, 0x10, 0xBA, 0x98, 0x23, 0x54
 };
-
 static AES_KEY aes_key[2];
+
+static DH *dh_client;
+static unsigned char *dh_key;
+
+static RSA *rsa_val;
 
 
 int main(int argc, char *argv[]) {
@@ -103,7 +113,7 @@ int main(int argc, char *argv[]) {
   CLIENT *clnt = connect_server(argv[1]);
 
   set_crypto_scheme(CS_AES);
-  setcrypt();
+  setcrypt(clnt);
 
   for (i = 0; i < request_count; i++) {
     usleep(100000);
@@ -175,6 +185,10 @@ void print_stats() {
 
   printf("mean cryption time = %.3lf us\n", mean_cryption_time * 1000000);
   printf("standatd deviation = %.3lf us\n\n", sqrt(var_cryption_time) * 1000000);
+
+  if (handshake_time > 0.0) {
+    printf("handshake time = %.3lf us\n", handshake_time * 1000000);
+  }
 }
 
 
@@ -207,7 +221,6 @@ CLIENT *connect_server(char *host) {
 }
 
 void read_clnt(CLIENT *clnt, char *buffer, int key) {
-
   clock_t time_begin = clock();
   enum clnt_stat stat = clnt_call(clnt, TEST_RDOP,
                                   (xdrproc_t) xdr_int, (char *) &key,
@@ -307,13 +320,13 @@ void check_buffer(char *buffer, int key) {
   }
 }
 
-void none_setup() { /* Do nothing */ }
+void none_setup(CLIENT *clnt) { /* Do nothing */ }
 
 void none_encrypt(char *data) { /* Do nothing */ }
 
 void none_decrypt(char *data) { /* Do nothing */ }
 
-void des_setup() {
+void des_setup(CLIENT *clnt) {
   static int is_already_set = 0;
 
   if (is_already_set++ > 0) {
@@ -372,7 +385,7 @@ void des_decrypt(char *data) {
   free(out);
 }
 
-void tdes_setup() {
+void tdes_setup(CLIENT *clnt) {
   static int is_already_set = 0;
 
   if (is_already_set++ > 0) {
@@ -432,7 +445,7 @@ void tdes_decrypt(char *data) {
   free(out);
 }
 
-void aes_setup() {
+void aes_setup(CLIENT *clnt) {
   AES_set_encrypt_key(aes_cipher_key, 128, &aes_key[0]);
   AES_set_decrypt_key(aes_cipher_key, 128, &aes_key[1]);
 }
@@ -479,16 +492,48 @@ void aes_decrypt(char *data) {
   free(out);
 }
 
-void dh_setup() {
+void dh_setup(CLIENT *clnt) {
+  clock_t time_begin = clock();
+
+  FILE *fpem = fopen("dh1024.pem", "r");
+
+  DH *dh_client = PEM_read_DHparams(fpem, NULL, NULL, NULL);
+  DH_generate_key(dh_client);
+
+  BIGNUM *client_pub_key = dh_client->pub_key;
+  BIGNUM *server_pub_key;
+
+  enum clnt_stat stat = clnt_call(clnt, TEST_HSOP,
+                                  (xdrproc_t) xdr_bignum, (char *) client_pub_key,
+                                  (xdrproc_t) xdr_bignu, (char *) server_pub_key,
+                                  timeout);
+
+  if (stat != RPC_SUCCESS) {
+    clnt_perrno(stat);
+    fprintf(stderr, "Error: dh_setup faild at %d\n", stat);
+    exit(EXIT_FAILURE);
+  }
+
+  dh_key = (unsigned char *) malloc(DH_size(dh_client));
+  DH_compute_key(dh_key, server_pub_key, dh_client);
+
+  fclose(fpem);
+
+  handshake_time = (double) (clock() - time_begin) / CLOCKS_PER_SEC;
+
+  aes_setup(clnt);
 }
 
 void dh_encrypt(char *data) {
+  aes_encrypt(data);
 }
 
 void dh_decrypt(char *data) {
+  aes_decrypt(data);
 }
 
-void rsa_setup() {
+void rsa_setup(CLIENT *clnt) {
+  //rsa_val = RSA_generate_key(DATA_SIZE, RSA_EXP, NULL, NULL);
 }
 
 void rsa_encrypt(char *data) {
