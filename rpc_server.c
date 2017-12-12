@@ -208,7 +208,9 @@ void write_rpc(struct wb *blockp) {
 #endif
 }
 
-BIGNUM *handshake_rpc(BIGNUM *client_pub_key) {
+struct hb *handshake_rpc(struct hb *blockp) {
+  static struct hb ret;
+
 #ifdef LOG_ENABLE
   printf("handshake_rpc requested\n");
 #endif
@@ -219,28 +221,20 @@ BIGNUM *handshake_rpc(BIGNUM *client_pub_key) {
   DH_generate_key(dh_server);
 
   unsigned char *dh_key = (unsigned char *) malloc(DH_size(dh_server));
-
-  if (dh_key == NULL || client_pub_key == NULL || dh_server == NULL) {
-    if (dh_key == NULL) {
-      fprintf(stderr, "Error: secret_key is NULL\n");
-    }
-    if (client_pub_key == NULL) {
-      fprintf(stderr, "Error: client_key is NULL\n");
-    }
-    if (dh_server == NULL) {
-      fprintf(stderr, "Error: server_key is NULL\n");
-    }
-    exit(EXIT_FAILURE);
-  }
+  BIGNUM *client_pub_key = BN_new();
+  BN_bin2bn(blockp->data, blockp->size, client_pub_key);
 
   DH_compute_key(dh_key, client_pub_key, dh_server);
 
+  BN_free(client_pub_key);
   free(dh_key);
   fclose(fpem);
+
+  ret.size = BN_bn2bin(dh_server->pub_key, ret.data);
 
 #ifdef LOG_ENABLE
   printf("handshake_rpc returned\n");
 #endif
 
-  return dh_server->pub_key;
+  return &ret;
 }

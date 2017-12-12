@@ -1,6 +1,8 @@
 #ifndef __RPC_COMMON_H__
 #define __RPC_COMMON_H__
 
+#include <openssl/bn.h>
+
 #define HOST_LEN 64
 
 #define DATA_SIZE 1024
@@ -17,6 +19,11 @@ struct wb {
   char data[DATA_SIZE];
 };
 
+struct hb {
+  unsigned char data[DATA_SIZE];
+  int size;
+};
+
 
 bool_t xdr_read(XDR *xdrs, char *buffer) {
   return xdr_vector(xdrs, buffer, DATA_SIZE,
@@ -24,7 +31,7 @@ bool_t xdr_read(XDR *xdrs, char *buffer) {
 }
 
 bool_t xdr_write(XDR *xdrs, struct wb *blockp) {
-  if (!xdr_int(xdrs, &blockp->key)) {
+  if (xdr_int(xdrs, &blockp->key) == 0) {
     return 0;
   }
 
@@ -32,8 +39,9 @@ bool_t xdr_write(XDR *xdrs, struct wb *blockp) {
                     sizeof(char), (xdrproc_t) xdr_char);
 }
 
-bool_t xdr_handshake(XDR *xdrs, BIGNUM *dh_val) {
-  return xdr_opaque(xdrs, (char *) dh_val, sizeof(BIGNUM));
+bool_t xdr_handshake(XDR *xdrs, struct hb *blockp) {
+  return xdr_vector(xdrs, blockp->data, blockp->size,
+                    sizeof(unsigned char), (xdrproc_t) xdr_u_char);
 }
 
 #endif
