@@ -504,7 +504,7 @@ void dh_setup(CLIENT *clnt) {
   memset(block.data, 0, sizeof(block.data));
   block.size = BN_num_bytes(dh_client->pub_key);
 
-  if (block.size == BN_bn2bin(dh_client->pub_key, block.data)) {
+  if (block.size != BN_bn2bin(dh_client->pub_key, block.data)) {
     fprintf(stderr, "Error: dh block size invalid\n");
     exit(EXIT_FAILURE);
   }
