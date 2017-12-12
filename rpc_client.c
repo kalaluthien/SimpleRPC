@@ -36,27 +36,25 @@ void set_crypto_scheme();
 void init_buffer(char *buffer, int key);
 void check_buffer(char *buffer, int key);
 
-void none_setup();
+void none_setup(CLIENT *clnt);
 void none_encrypt(char *data);
 void none_decrypt(char *data);
 
-void des_setup();
+void des_setup(CLIENT *clnt);
 void des_encrypt(char *data);
 void des_decrypt(char *data);
 
-void tdes_setup();
+void tdes_setup(CLIENT *clnt);
 void tdes_encrypt(char *data);
 void tdes_decrypt(char *data);
 
-void aes_setup();
+void aes_setup(CLIENT *clnt);
 void aes_encrypt(char *data);
 void aes_decrypt(char *data);
 
-void dh_setup();
-void dh_encrypt(char *data);
-void dh_decrypt(char *data);
+void dh_handshake(CLIENT *clnt);
 
-void rsa_setup();
+void rsa_setup(CLIENT *clnt);
 void rsa_encrypt(char *data);
 void rsa_decrypt(char *data);
 
@@ -76,7 +74,7 @@ static int request_keys[DB_COUNT];
 static int request_count;
 
 /* Crypto fuction pointers */
-enum CRYPTO_SCHEME { CS_NONE, CS_DES, CS_TDES, CS_AES, CS_DH, CS_RSA };
+enum CRYPTO_SCHEME { CS_NONE, CS_DES, CS_TDES, CS_AES, CS_RSA };
 static void (*setcrypt)(CLIENT *);
 static void (*encrypt)(char *);
 static void (*decrypt)(char *);
@@ -111,7 +109,7 @@ int main(int argc, char *argv[]) {
 
   CLIENT *clnt = connect_server(argv[1]);
 
-  set_crypto_scheme(CS_DH);
+  set_crypto_scheme(CS_RSA);
   setcrypt(clnt);
 
   for (i = 0; i < request_count; i++) {
@@ -132,8 +130,7 @@ int main(int argc, char *argv[]) {
     progress_ratio = (double) (i + 1) / request_count;
     progress_percent = (int) (progress_ratio * 100);
     num_done = progress_percent / 2;
-    printf("\r%3d%% [%.*s%*s]",
-           progress_percent, num_done, PROGRESS_BAR, 50 - num_done, "");
+    printf("\r%3d%% [%.*s%*s]", progress_percent, num_done, PROGRESS_BAR, 50 - num_done, "");
     fflush(stdout);
   }
 
@@ -185,9 +182,7 @@ void print_stats() {
   printf("mean cryption time = %.3lf us\n", mean_cryption_time * 1000000);
   printf("standatd deviation = %.3lf us\n\n", sqrt(var_cryption_time) * 1000000);
 
-  if (handshake_time > 0.0) {
-    printf("handshake time = %.3lf us\n", handshake_time * 1000000);
-  }
+  printf("handshake time = %.3lf us\n", handshake_time * 1000000);
 }
 
 
@@ -275,12 +270,6 @@ void set_crypto_scheme(enum CRYPTO_SCHEME crypto_scheme) {
       setcrypt = aes_setup;
       encrypt = aes_encrypt;
       decrypt = aes_decrypt;
-      break;
-
-    case CS_DH:
-      setcrypt = dh_setup;
-      encrypt = dh_encrypt;
-      decrypt = dh_decrypt;
       break;
 
     case CS_RSA:
@@ -445,6 +434,13 @@ void tdes_decrypt(char *data) {
 }
 
 void aes_setup(CLIENT *clnt) {
+  dh_handshake(clnt);
+
+  int i;
+  for (i = 0; i < AES_BLOCK_SIZE; i++) {
+    aes_cipher_key[i] = dh_key[i];
+  }
+
   AES_set_encrypt_key(aes_cipher_key, 128, &aes_key[0]);
   AES_set_decrypt_key(aes_cipher_key, 128, &aes_key[1]);
 }
@@ -491,7 +487,7 @@ void aes_decrypt(char *data) {
   free(out);
 }
 
-void dh_setup(CLIENT *clnt) {
+void dh_handshake(CLIENT *clnt) {
   struct hb block;
 
   clock_t time_begin = clock();
@@ -530,16 +526,6 @@ void dh_setup(CLIENT *clnt) {
   fclose(fpem);
 
   handshake_time = (double) (clock() - time_begin) / CLOCKS_PER_SEC;
-
-  aes_setup(clnt);
-}
-
-void dh_encrypt(char *data) {
-  aes_encrypt(data);
-}
-
-void dh_decrypt(char *data) {
-  aes_decrypt(data);
 }
 
 void rsa_setup(CLIENT *clnt) {
