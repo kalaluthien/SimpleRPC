@@ -91,7 +91,7 @@ void get_host_status();
 /* RPC function prototypes */
 char *read_rpc(int *keyp);
 void write_rpc(struct wb *blockp);
-BIGNUM *handshake_rpc(BIGNUM *client_pub_key);
+struct hb *handshake_rpc(struct hb *blockp);
 
 
 /* RPC global variables */

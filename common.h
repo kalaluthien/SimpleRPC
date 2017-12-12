@@ -40,7 +40,7 @@ bool_t xdr_write(XDR *xdrs, struct wb *blockp) {
 }
 
 bool_t xdr_handshake(XDR *xdrs, struct hb *blockp) {
-  return xdr_vector(xdrs, blockp->data, blockp->size,
+  return xdr_vector(xdrs, (char *) blockp->data, blockp->size,
                     sizeof(unsigned char), (xdrproc_t) xdr_u_char);
 }
 
