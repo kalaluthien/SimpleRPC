@@ -126,7 +126,7 @@ int main(int argc, char *argv[]) {
     init_buffer(buf, request_keys[i]);
     encrypt(buf);
 
-    write_clnt(clnt, buf, request_keys[i]);
+    write_clnt(clnt, buf, request_keys[i], entry_size);
 #endif
 
     progress_ratio = (double) (i + 1) / request_count;
@@ -243,11 +243,12 @@ void read_clnt(CLIENT *clnt, char *buffer, int key, int size) {
   memcpy(buffer, rob.data, rob.size);
 }
 
-void write_clnt(CLIENT *clnt, char *buffer, int key) {
+void write_clnt(CLIENT *clnt, char *buffer, int key, int size) {
   struct write_in_block wib;
 
   wib.key = key;
-  memcpy(wib.data, buffer, DATA_SIZE);
+  wib.size = size;
+  memcpy(wib.data, buffer, size);
 
   clock_t time_begin = clock();
 
