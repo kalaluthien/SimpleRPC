@@ -98,10 +98,7 @@ static DES_key_schedule des_keysched[2];
 static unsigned char aes_cipher_key[AES_BLOCK_SIZE] = {
   0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF
 };
-static unsigned char iv_aes[AES_BLOCK_SIZE] = {
-  0xCD, 0x67, 0xEF, 0x01, 0xAB, 0x89, 0x23, 0x45,
-  0xDC, 0x76, 0xFE, 0x10, 0xBA, 0x98, 0x23, 0x54
-};
+static unsigned char iv_aes[AES_BLOCK_SIZE];
 static AES_KEY aes_key[2];
 
 static unsigned char *dh_key;
@@ -123,7 +120,7 @@ int main(int argc, char *argv[]) {
 
   printf("%s start (WRITE MODE)\n", crypto_name[cs]);
 
-  int i
+  int i;
   for (i = 0; i < request_count; i++) {
     usleep(100000);
 
@@ -142,6 +139,7 @@ int main(int argc, char *argv[]) {
   reset_stats();
 
   printf("\n%s start (READ MODE)\n", crypto_name[cs]);
+  memset(iv_aes, MAGIC, AES_BLOCK_SIZE);
 
   for (i = 0; i < request_count; i++) {
     usleep(100000);
@@ -227,15 +225,16 @@ void print_progress(int i) {
 }
 
 void print_buffer(char *buffer, int size) {
+  static int count;
+
+  printf("[%02d](", count++);
+
   int i;
-
-  printf("(");
-
   for (i = 0; i < size; i++) {
     printf(" %x", buffer[i]);
   }
 
-  printf(")\n");
+  printf(" )\n");
 }
 
 
@@ -532,6 +531,7 @@ void aes_encrypt(char *data) {
 
   clock_t time_begin = clock();
 
+  memset(iv_aes, MAGIC, AES_BLOCK_SIZE);
   AES_cbc_encrypt(in, out, DATA_SIZE, &aes_key[0], iv_aes, AES_ENCRYPT);
 
   double cryption_time = (double) (clock() - time_begin) / CLOCKS_PER_SEC;
@@ -553,6 +553,7 @@ void aes_decrypt(char *data) {
 
   clock_t time_begin = clock();
 
+  memset(iv_aes, MAGIC, AES_BLOCK_SIZE);
   AES_cbc_encrypt(in, out, DATA_SIZE, &aes_key[1], iv_aes, AES_DECRYPT);
 
   double cryption_time = (double) (clock() - time_begin) / CLOCKS_PER_SEC;
