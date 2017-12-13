@@ -29,7 +29,7 @@ void print_stats();
 /* RPC function prototypes */
 CLIENT *connect_server(char *host);
 void read_clnt(CLIENT *clnt, char *buffer, int key, int size);
-void write_clnt(CLIENT *clnt, char *buffer, int key);
+void write_clnt(CLIENT *clnt, char *buffer, int key, int size);
 
 /* Crypto function prototypes */
 void set_crypto_scheme();
