@@ -105,13 +105,13 @@ int main(int argc, char *argv[]) {
 #endif
 
   if (registerrpc(TEST_PROG, TEST_VERS, TEST_RDOP, read_rpc,
-                  (xdrproc_t) xdr_int, (xdrproc_t) xdr_read) < 0) {
+                  (xdrproc_t) xdr_read_in, (xdrproc_t) xdr_read_out) < 0) {
     fprintf(stderr, "registering read_rpc faild\n");
     exit(EXIT_FAILURE);
   }
 
   if (registerrpc(TEST_PROG, TEST_VERS, TEST_WROP, write_rpc,
-                  (xdrproc_t) xdr_write, (xdrproc_t) xdr_void) < 0) {
+                  (xdrproc_t) xdr_write_in, (xdrproc_t) xdr_void) < 0) {
     fprintf(stderr, "registering write_rpc faild\n");
     exit(EXIT_FAILURE);
   }
@@ -164,56 +164,52 @@ void get_host_status() {
 }
 
 /* RPC functions */
-char *read_rpc(int *keyp) {
-  static char buffer[DATA_SIZE];
-  int key = *keyp;
+struct read_out_block *read_rpc(struct read_in_block *blockp) {
+  static struct read_out_block block;
 
 #ifdef LOG_ENABLE
-  printf("read_rpc(%d) requested\n", key);
+  printf("read_rpc(%d) requested\n", blockp->key);
 #endif
 
   read_aquire();
 
-  int offset = key * (sizeof(int) + sizeof(char) * DATA_SIZE) + sizeof(int);
+  int offset = blockp->key * (sizeof(int) + sizeof(char) * ENTRY_SIZE) + sizeof(int);
   fseek(db, offset, SEEK_SET);
-  fread(buffer, sizeof(char), DATA_SIZE, db);
+  block.size = fread(block.data, sizeof(char), blockp->size, db);
 
   read_release();
 
 #ifdef LOG_ENABLE
-  printf("read_rpc(%d) returned\n", key);
+  printf("read_rpc(%d) returned\n", blockp->key);
 #endif
 
-  return buffer;
+  return &block;
 }
 
-void write_rpc(struct wb *blockp) {
-  int key = blockp->key;
-  char *buffer = blockp->data;
-
+void write_rpc(struct write_in_block *blockp) {
 #ifdef LOG_ENABLE
-  printf("write_rpc(%d) requested\n", key);
+  printf("write_rpc(%d) requested\n", blockp->key);
 #endif
 
   write_aquire();
 
-  int offset = key * (sizeof(int) + sizeof(char) * DATA_SIZE) + sizeof(int);
+  int offset = blockp->key * (sizeof(int) + sizeof(char) * ENTRY_SIZE) + sizeof(int);
   fseek(db, offset, SEEK_SET);
-  fwrite(buffer, sizeof(char), DATA_SIZE, db);
+  fwrite(blockp->data, sizeof(char), blockp->size, db);
 
   write_release();
 
 #ifdef LOG_ENABLE
-  printf("write_rpc(%d) retured\n", key);
+  printf("write_rpc(%d) retured\n", blockp->key);
 #endif
 }
 
-struct hb *handshake_rpc(struct hb *blockp) {
-  static struct hb ret;
-
+struct handshake_block *handshake_rpc(struct handshake_block *blockp) {
 #ifdef LOG_ENABLE
   printf("handshake_rpc requested\n");
 #endif
+
+  static struct handshake_block block;
 
   FILE *fpem = fopen("dh1024.pem", "r");
 
@@ -230,11 +226,11 @@ struct hb *handshake_rpc(struct hb *blockp) {
   free(dh_key);
   fclose(fpem);
 
-  ret.size = BN_bn2bin(dh_server->pub_key, ret.data);
+  block.size = BN_bn2bin(dh_server->pub_key, block.data);
 
 #ifdef LOG_ENABLE
   printf("handshake_rpc returned\n");
 #endif
 
-  return &ret;
+  return &block;
 }

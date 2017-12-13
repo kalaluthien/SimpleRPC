@@ -20,7 +20,7 @@
 
 #define PROGRESS_BAR "##################################################"
 #define MAGIC 137
-#define RSA_EXP 3
+#define RSA_EXP 65537
 
 /* Utility function prototypes */
 void parse_input(int argc, char *argv[]);
@@ -97,7 +97,8 @@ static AES_KEY aes_key[2];
 
 static unsigned char *dh_key;
 
-static RSA *rsa_val;
+static RSA *rsa_public_key;
+static RSA *rsa_private_key;
 
 
 int main(int argc, char *argv[]) {
@@ -109,7 +110,7 @@ int main(int argc, char *argv[]) {
 
   CLIENT *clnt = connect_server(argv[1]);
 
-  set_crypto_scheme(CS_RSA);
+  set_crypto_scheme(CS_AES);
   setcrypt(clnt);
 
   for (i = 0; i < request_count; i++) {
@@ -529,7 +530,18 @@ void dh_handshake(CLIENT *clnt) {
 }
 
 void rsa_setup(CLIENT *clnt) {
-  //rsa_val = RSA_generate_key(DATA_SIZE, RSA_EXP, NULL, NULL);
+  rsa_private_key = RSA_generate_key(DATA_SIZE, RSA_EXP, NULL, NULL);
+
+  unsigned char *n_bin = (unsigned char *) malloc(RSA_size(rsa_private_key));
+  unsigned char *e_bin = (unsigned char *) malloc(RSA_size(rsa_private_key));
+
+  int n_size = BN_bn2bin(rsa_private_key->n, n_bin);
+  int e_size = BN_bn2bin(rsa_private_key->e, e_bin);
+
+  rsa_public_key = RSA_new();
+
+  rsa_public_key->n = BN_bin2bn(n_bin, n_size, NULL);
+  rsa_public_key->e = BN_bin2bn(e_bin, e_size, NULL);
 }
 
 void rsa_encrypt(char *data) {
