@@ -96,7 +96,8 @@ static DES_cblock des_key[2] = {
 static DES_key_schedule des_keysched[2];
 
 static unsigned char aes_cipher_key[AES_BLOCK_SIZE] = {
-  0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF
+  0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7,
+  0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF
 };
 static unsigned char iv_aes[AES_BLOCK_SIZE];
 static AES_KEY aes_key[2];
@@ -105,6 +106,8 @@ static unsigned char *dh_key;
 
 static RSA *rsa_public_key;
 static RSA *rsa_private_key;
+static int rsa_block_size;
+static int rsa_remain_size;
 
 
 int main(int argc, char *argv[]) {
@@ -397,7 +400,7 @@ void des_setup(CLIENT *clnt) {
 
 void des_encrypt(char *data) {
   DES_cblock *in = (DES_cblock *) data;
-  DES_cblock *out = (DES_cblock *) malloc(DATA_SIZE);
+  DES_cblock *out = (DES_cblock *) malloc(entry_size);
 
   if (DATA_SIZE % sizeof(DES_cblock) != 0) {
     fprintf(stderr, "Error: data size invalid (%d)\n", DATA_SIZE);
@@ -421,7 +424,7 @@ void des_encrypt(char *data) {
 
 void des_decrypt(char *data) {
   DES_cblock *in = (DES_cblock *) data;
-  DES_cblock *out = (DES_cblock *) malloc(DATA_SIZE);
+  DES_cblock *out = (DES_cblock *) malloc(entry_size);
 
   if (DATA_SIZE % sizeof(DES_cblock) != 0) {
     fprintf(stderr, "Error: data size invalid (%d)\n", DATA_SIZE);
@@ -505,14 +508,12 @@ void tdes_decrypt(char *data) {
 }
 
 void aes_setup(CLIENT *clnt) {
-  /*
   dh_handshake(clnt);
 
   int i;
   for (i = 0; i < AES_BLOCK_SIZE; i++) {
     aes_cipher_key[i] = dh_key[i];
   }
-  */
 
   entry_size = DATA_SIZE;
 
@@ -606,23 +607,82 @@ void dh_handshake(CLIENT *clnt) {
 }
 
 void rsa_setup(CLIENT *clnt) {
-  entry_size = DATA_SIZE;
   rsa_private_key = RSA_generate_key(DATA_SIZE, RSA_EXP, NULL, NULL);
-
   unsigned char *n_bin = (unsigned char *) malloc(RSA_size(rsa_private_key));
   unsigned char *e_bin = (unsigned char *) malloc(RSA_size(rsa_private_key));
-
   int n_size = BN_bn2bin(rsa_private_key->n, n_bin);
   int e_size = BN_bn2bin(rsa_private_key->e, e_bin);
 
   rsa_public_key = RSA_new();
-
   rsa_public_key->n = BN_bin2bn(n_bin, n_size, NULL);
   rsa_public_key->e = BN_bin2bn(e_bin, e_size, NULL);
+
+  rsa_block_size = RSA_size(rsa_public_key) - RSA_PKCS1_PADDING - 1;
+  rsa_remain_size = DATA_SIZE % rsa_block_size;
+  entry_size = RSA_size(rsa_public_key) * (DATA_SIZE / rsa_block_size);
+  entry_size += (rsa_remain_size > 0) ? RSA_size(rsa_public_key) : 0;
 }
 
 void rsa_encrypt(char *data) {
+  unsigned char (*in)[rsa_block_size] =
+    (unsigned char (*)[rsa_block_size]) data;
+  unsigned char (*out)[RSA_size(rsa_public_key)] =
+    (unsigned char (*)[RSA_size(rsa_public_key)]) malloc(entry_size);
+
+  clock_t time_begin = clock();
+
+  int i;
+  for (i = 0; i < DATA_SIZE / rsa_block_size; i++)
+    RSA_public_encrypt(rsa_block_size,
+                       (char *) &in[i],
+                       (char *) &out[i],
+                       rsa_public_key,
+                       RSA_PKCS1_PADDING);
+  }
+  if (rsa_remain_size > 0) {
+    RSA_public_encrypt(rsa_remain_size,
+                       (char *) &in[DATA_SIZE / rsa_block_size],
+                       (char *) &out[DATA_SIZE / rsa_block_size],
+                       rsa_public_key
+                       RSA_PKCS1_PADDING);
+  }
+
+  double cryption_time = (double) (clock() - time_begin) / CLOCKS_PER_SEC;
+  sum_of_cryption_time += cryption_time;
+  sum_of_cryption_time_sqare += cryption_time * cryption_time;
+
+  memcpy(in, out, entry_size);
+  free(out);
 }
 
 void rsa_decrypt(char *data) {
+  unsigned char (*in)[RSA_size(rsa_private_key)] =
+    (unsigned char (*)[RSA_size(rsa_private_key)]) data;
+  unsigned char (*out)[rsa_block_size] =
+    (unsigned char (*)[rsa_block_size]) malloc(entry_size);
+
+  clock_t time_begin = clock();
+
+  int i;
+  for (i = 0; i < DATA_SIZE / rsa_block_size; i++)
+    RSA_public_decrypt(rsa_block_size,
+                       (char *) &in[i],
+                       (char *) &out[i],
+                       rsa_private_key,
+                       RSA_PKCS1_PADDING);
+  }
+  if (rsa_remain_size > 0) {
+    RSA_public_decrypt(rsa_remain_size,
+                       (char *) &in[DATA_SIZE / rsa_block_size],
+                       (char *) &out[DATA_SIZE / rsa_block_size],
+                       rsa_private_key,
+                       RSA_PKCS1_PADDING);
+  }
+
+  double cryption_time = (double) (clock() - time_begin) / CLOCKS_PER_SEC;
+  sum_of_cryption_time += cryption_time;
+  sum_of_cryption_time_sqare += cryption_time * cryption_time;
+
+  memcpy(in, out, entry_size);
+  free(out);
 }
