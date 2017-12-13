@@ -634,16 +634,16 @@ void rsa_encrypt(char *data) {
   int i;
   for (i = 0; i < DATA_SIZE / rsa_block_size; i++) {
     RSA_public_encrypt(rsa_block_size,
-                       (char *) &in[i],
-                       (char *) &out[i],
+                       (const unsigned char *) &in[i],
+                       (unsigned char *) &out[i],
                        rsa_public_key,
                        RSA_PKCS1_PADDING);
   }
   if (rsa_remain_size > 0) {
     RSA_public_encrypt(rsa_remain_size,
-                       (char *) &in[DATA_SIZE / rsa_block_size],
-                       (char *) &out[DATA_SIZE / rsa_block_size],
-                       rsa_public_key
+                       (const unsigned char *) &in[DATA_SIZE / rsa_block_size],
+                       (unsigned char *) &out[DATA_SIZE / rsa_block_size],
+                       rsa_public_key,
                        RSA_PKCS1_PADDING);
   }
 
@@ -665,16 +665,16 @@ void rsa_decrypt(char *data) {
 
   int i;
   for (i = 0; i < DATA_SIZE / rsa_block_size; i++) {
-    RSA_public_decrypt(rsa_block_size,
-                       (char *) &in[i],
-                       (char *) &out[i],
+    RSA_private_decrypt(rsa_block_size,
+                       (const unsigned char *) &in[i],
+                       (unsigned char *) &out[i],
                        rsa_private_key,
                        RSA_PKCS1_PADDING);
   }
   if (rsa_remain_size > 0) {
-    RSA_public_decrypt(rsa_remain_size,
-                       (char *) &in[DATA_SIZE / rsa_block_size],
-                       (char *) &out[DATA_SIZE / rsa_block_size],
+    RSA_private_decrypt(rsa_remain_size,
+                       (const unsigned char *) &in[DATA_SIZE / rsa_block_size],
+                       (unsigned char *) &out[DATA_SIZE / rsa_block_size],
                        rsa_private_key,
                        RSA_PKCS1_PADDING);
   }
