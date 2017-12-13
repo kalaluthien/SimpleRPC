@@ -25,6 +25,7 @@
 /* Utility function prototypes */
 void parse_input(int argc, char *argv[]);
 void print_stats();
+void print_buffer(char *buffer, int size);
 
 /* RPC function prototypes */
 CLIENT *connect_server(char *host);
@@ -118,15 +119,19 @@ int main(int argc, char *argv[]) {
     usleep(100000);
 
 #ifdef READ_MODE
-    read_clnt(clnt, buf, request_keys[i], entry_size);
+    read_clnt(clnt, buf, request_keys[i]);
 
+    print_buffer(buf, 32);
     decrypt(buf);
+    print_buffer(buf, 32);
     check_buffer(buf, request_keys[i]);
 #elif WRITE_MODE
     init_buffer(buf, request_keys[i]);
+    print_buffer(buf, 32);
     encrypt(buf);
+    print_buffer(buf, 32);
 
-    write_clnt(clnt, buf, request_keys[i], entry_size);
+    write_clnt(clnt, buf, request_keys[i]);
 #endif
 
     progress_ratio = (double) (i + 1) / request_count;
@@ -216,12 +221,12 @@ CLIENT *connect_server(char *host) {
   return clnt;
 }
 
-void read_clnt(CLIENT *clnt, char *buffer, int key, int size) {
+void read_clnt(CLIENT *clnt, char *buffer, int key) {
   struct read_in_block rib;
   struct read_out_block rob;
 
   rib.key = key;
-  rib.size = size;
+  rib.size = entry_size;
 
   clock_t time_begin = clock();
 
@@ -243,12 +248,12 @@ void read_clnt(CLIENT *clnt, char *buffer, int key, int size) {
   memcpy(buffer, rob.data, rob.size);
 }
 
-void write_clnt(CLIENT *clnt, char *buffer, int key, int size) {
+void write_clnt(CLIENT *clnt, char *buffer, int key) {
   struct write_in_block wib;
 
   wib.key = key;
-  wib.size = size;
-  memcpy(wib.data, buffer, size);
+  wib.size = entry_size;
+  memcpy(wib.data, buffer, wib.size);
 
   clock_t time_begin = clock();
 
@@ -325,6 +330,19 @@ void check_buffer(char *buffer, int key) {
     }
   }
 }
+
+void print_buffer(char *buffer, int size) {
+  int i;
+
+  printf("[");
+
+  for (i = 0; i < size; i++) {
+    printf("%c", buffer[i]);
+  }
+
+  printf("]\n");
+}
+
 
 void none_setup(CLIENT *clnt) { /* Do nothing */ }
 
