@@ -89,9 +89,9 @@ void parse_argument(int argc, char *argv[]);
 void get_host_status();
 
 /* RPC function prototypes */
-char *read_rpc(int *keyp);
-void write_rpc(struct wb *blockp);
-struct hb *handshake_rpc(struct hb *blockp);
+struct read_out_block *read_rpc(struct read_in_block *blockp);
+void write_rpc(struct write_in_block *blockp);
+struct handshake_block *handshake_rpc(struct handshake_block *blockp);
 
 
 /* RPC global variables */
