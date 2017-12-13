@@ -111,8 +111,6 @@ static RSA *rsa_private_key;
 
 
 int main(int argc, char *argv[]) {
-  int i, progress_percent, num_done;
-  double progress_ratio;
   char buf[DATA_SIZE];
 
   parse_input(argc, argv);
@@ -125,6 +123,7 @@ int main(int argc, char *argv[]) {
 
   printf("%s start (WRITE MODE)\n", crypto_name[cs]);
 
+  int i
   for (i = 0; i < request_count; i++) {
     usleep(100000);
 
@@ -230,13 +229,13 @@ void print_progress(int i) {
 void print_buffer(char *buffer, int size) {
   int i;
 
-  printf("[");
+  printf("(");
 
   for (i = 0; i < size; i++) {
-    printf("%c", buffer[i]);
+    printf(" %x", buffer[i]);
   }
 
-  printf("]\n");
+  printf(")\n");
 }
 
 
@@ -245,13 +244,13 @@ CLIENT *connect_server(char *host) {
   CLIENT *clnt;
   if ((clnt = clnt_create(host, TEST_PROG, TEST_VERS, "udp")) == NULL) {
     fprintf(stderr, "Error: clnt_create faild\n");
-    exit (EXIT_FAILURE);
+    exit(EXIT_FAILURE);
   }
 
   struct sockaddr_in sa;
   if (clnt_control(clnt, CLGET_SERVER_ADDR, (char *) &sa) == 0) {
     fprintf(stderr, "Error: clnt_control faild\n");
-    exit (EXIT_FAILURE);
+    exit(EXIT_FAILURE);
   }
 
   unsigned int ip = sa.sin_addr.s_addr;
@@ -507,12 +506,14 @@ void tdes_decrypt(char *data) {
 }
 
 void aes_setup(CLIENT *clnt) {
+  /*
   dh_handshake(clnt);
 
   int i;
   for (i = 0; i < AES_BLOCK_SIZE; i++) {
     aes_cipher_key[i] = dh_key[i];
   }
+  */
 
   entry_size = DATA_SIZE;
 
