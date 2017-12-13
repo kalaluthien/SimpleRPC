@@ -93,11 +93,10 @@ struct read_out_block *read_rpc(struct read_in_block *blockp);
 void write_rpc(struct write_in_block *blockp);
 struct handshake_block *handshake_rpc(struct handshake_block *blockp);
 
-
 /* RPC global variables */
 static FILE *db;
-static read_out_block rb;
-static handshake_block hb;
+static struct read_out_block rb;
+static struct handshake_block hb;
 
 
 int main(int argc, char *argv[]) {
@@ -168,7 +167,7 @@ void get_host_status() {
 /* RPC functions */
 struct read_out_block *read_rpc(struct read_in_block *rib) {
 #ifdef LOG_ENABLE
-  printf("read_rpc(%d, %d) requested\n", blockp->key, blockp->size);
+  printf("read_rpc(%d, %d) requested\n", rib->key, rib->size);
 #endif
 
   struct read_out_block *rob = &rb;
@@ -208,7 +207,7 @@ void write_rpc(struct write_in_block *wib) {
 
 struct handshake_block *handshake_rpc(struct handshake_block *hib) {
 #ifdef LOG_ENABLE
-  printf("handshake_rpc(%d) requested\n", hb->size);
+  printf("handshake_rpc(%d) requested\n", hib->size);
 #endif
 
   struct handshake_block *hob = &hb;
