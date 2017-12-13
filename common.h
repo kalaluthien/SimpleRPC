@@ -64,6 +64,10 @@ bool_t xdr_write_in(XDR *xdrs, struct write_in_block *blockp) {
 }
 
 bool_t xdr_handshake(XDR *xdrs, struct handshake_block *blockp) {
+  if (xdr_int(xdrs, &blockp->size) == 0) {
+    return 0;
+  }
+
   return xdr_vector(xdrs, (char *) blockp->data, blockp->size,
                     sizeof(unsigned char), (xdrproc_t) xdr_u_char);
 }

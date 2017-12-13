@@ -206,7 +206,7 @@ void write_rpc(struct write_in_block *blockp) {
 
 struct handshake_block *handshake_rpc(struct handshake_block *blockp) {
 #ifdef LOG_ENABLE
-  printf("handshake_rpc requested\n");
+  printf("handshake_rpc(%d) requested\n", blockp->size);
 #endif
 
   static struct handshake_block block;
@@ -229,7 +229,7 @@ struct handshake_block *handshake_rpc(struct handshake_block *blockp) {
   block.size = BN_bn2bin(dh_server->pub_key, block.data);
 
 #ifdef LOG_ENABLE
-  printf("handshake_rpc returned\n");
+  printf("handshake_rpc(%d) returned\n", block.size);
 #endif
 
   return &block;

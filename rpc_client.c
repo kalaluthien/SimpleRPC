@@ -121,15 +121,11 @@ int main(int argc, char *argv[]) {
 #ifdef READ_MODE
     read_clnt(clnt, buf, request_keys[i]);
 
-    print_buffer(buf, 32);
     decrypt(buf);
-    print_buffer(buf, 32);
     check_buffer(buf, request_keys[i]);
 #elif WRITE_MODE
     init_buffer(buf, request_keys[i]);
-    print_buffer(buf, 32);
     encrypt(buf);
-    print_buffer(buf, 32);
 
     write_clnt(clnt, buf, request_keys[i]);
 #endif
