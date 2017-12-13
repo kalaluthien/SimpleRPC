@@ -29,8 +29,8 @@ void print_buffer(char *buffer, int size);
 
 /* RPC function prototypes */
 CLIENT *connect_server(char *host);
-void read_clnt(CLIENT *clnt, char *buffer, int key, int size);
-void write_clnt(CLIENT *clnt, char *buffer, int key, int size);
+void read_clnt(CLIENT *clnt, char *buffer, int key);
+void write_clnt(CLIENT *clnt, char *buffer, int key);
 
 /* Crypto function prototypes */
 void set_crypto_scheme();
