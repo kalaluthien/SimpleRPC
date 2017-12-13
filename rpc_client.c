@@ -617,7 +617,7 @@ void rsa_setup(CLIENT *clnt) {
   rsa_public_key->n = BN_bin2bn(n_bin, n_size, NULL);
   rsa_public_key->e = BN_bin2bn(e_bin, e_size, NULL);
 
-  rsa_block_size = RSA_size(rsa_public_key) - RSA_PKCS1_PADDING - 1;
+  rsa_block_size = RSA_size(rsa_public_key) - 12;
   rsa_remain_size = DATA_SIZE % rsa_block_size;
   entry_size = RSA_size(rsa_public_key) * (DATA_SIZE / rsa_block_size);
   entry_size += (rsa_remain_size > 0) ? RSA_size(rsa_public_key) : 0;
