@@ -28,7 +28,7 @@ void print_stats();
 
 /* RPC function prototypes */
 CLIENT *connect_server(char *host);
-void read_clnt(CLIENT *clnt, char *buffer, int key);
+void read_clnt(CLIENT *clnt, char *buffer, int key, int size);
 void write_clnt(CLIENT *clnt, char *buffer, int key);
 
 /* Crypto function prototypes */
@@ -72,6 +72,7 @@ static double handshake_time;
 static struct timeval time_out = { .tv_sec = 10L, .tv_usec = 0L };
 static int request_keys[DB_COUNT];
 static int request_count;
+static int entry_size;
 
 /* Crypto fuction pointers */
 enum CRYPTO_SCHEME { CS_NONE, CS_DES, CS_TDES, CS_AES, CS_RSA };
@@ -117,7 +118,7 @@ int main(int argc, char *argv[]) {
     usleep(100000);
 
 #ifdef READ_MODE
-    read_clnt(clnt, buf, request_keys[i]);
+    read_clnt(clnt, buf, request_keys[i], entry_size);
 
     decrypt(buf);
     check_buffer(buf, request_keys[i]);
@@ -215,11 +216,20 @@ CLIENT *connect_server(char *host) {
   return clnt;
 }
 
-void read_clnt(CLIENT *clnt, char *buffer, int key) {
+void read_clnt(CLIENT *clnt, char *buffer, int key, int size) {
+  struct read_in_block rib;
+  struct read_out_block rob;
+
+  rib.key = key;
+  rib.size = size;
+
   clock_t time_begin = clock();
+
   enum clnt_stat stat = clnt_call(clnt, TEST_RDOP,
-                                  (xdrproc_t) xdr_int, (char *) &key,
-                                  (xdrproc_t) xdr_read, buffer, time_out);
+                                  (xdrproc_t) xdr_read_in, (char *) &rib,
+                                  (xdrproc_t) xdr_read_out, (char *) &rob,
+                                  time_out);
+
   double response_time = (double) (clock() - time_begin) / CLOCKS_PER_SEC;
   sum_of_response_time += response_time;
   sum_of_response_time_sqare += response_time * response_time;
@@ -229,17 +239,23 @@ void read_clnt(CLIENT *clnt, char *buffer, int key) {
     fprintf(stderr, "Error: read_clnt faild at %d\n", stat);
     exit(EXIT_FAILURE);
   }
+
+  memcpy(buffer, rob.data, rob.size);
 }
 
 void write_clnt(CLIENT *clnt, char *buffer, int key) {
-  struct wb block;
-  block.key = key;
-  memcpy(block.data, buffer, sizeof(char) * DATA_SIZE);
+  struct write_in_block wib;
+
+  wib.key = key;
+  memcpy(wib.data, buffer, sizeof(char) * DATA_SIZE);
 
   clock_t time_begin = clock();
+
   enum clnt_stat stat = clnt_call(clnt, TEST_WROP,
-                                  (xdrproc_t) xdr_write, (char *) &block,
-                                  (xdrproc_t) xdr_void, NULL, time_out);
+                                  (xdrproc_t) xdr_write_in, (char *) &wib,
+                                  (xdrproc_t) xdr_void, NULL,
+                                  time_out);
+
   double response_time = (double) (clock() - time_begin) / CLOCKS_PER_SEC;
   sum_of_response_time += response_time;
   sum_of_response_time_sqare += response_time * response_time;
@@ -317,6 +333,7 @@ void none_decrypt(char *data) { /* Do nothing */ }
 
 void des_setup(CLIENT *clnt) {
   static int is_already_set = 0;
+  entry_size = DATA_SIZE;
 
   if (is_already_set++ > 0) {
     fprintf(stderr, "Error: DES setup called twice\n");
@@ -376,6 +393,7 @@ void des_decrypt(char *data) {
 
 void tdes_setup(CLIENT *clnt) {
   static int is_already_set = 0;
+  entry_size = DATA_SIZE;
 
   if (is_already_set++ > 0) {
     fprintf(stderr, "Error: DES setup called twice\n");
@@ -436,6 +454,7 @@ void tdes_decrypt(char *data) {
 
 void aes_setup(CLIENT *clnt) {
   dh_handshake(clnt);
+  entry_size = DATA_SIZE;
 
   int i;
   for (i = 0; i < AES_BLOCK_SIZE; i++) {
@@ -530,6 +549,7 @@ void dh_handshake(CLIENT *clnt) {
 }
 
 void rsa_setup(CLIENT *clnt) {
+  entry_size = DATA_SIZE * 2;
   rsa_private_key = RSA_generate_key(DATA_SIZE, RSA_EXP, NULL, NULL);
 
   unsigned char *n_bin = (unsigned char *) malloc(RSA_size(rsa_private_key));
