@@ -508,7 +508,7 @@ void aes_decrypt(char *data) {
 }
 
 void dh_handshake(CLIENT *clnt) {
-  struct hb block;
+  struct handshake_block block;
 
   clock_t time_begin = clock();
 
