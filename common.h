@@ -55,7 +55,7 @@ bool_t xdr_read_out(XDR *xdrs, struct read_out_block *blockp) {
 }
 
 bool_t xdr_write_in(XDR *xdrs, struct write_in_block *blockp) {
-  if (xdr_int(xdrs, &blockp->key) == 0) {
+  if (xdr_int(xdrs, &blockp->key) == 0 || xdr_int(xdrs, &blockp->size) == 0) {
     return 0;
   }
 
