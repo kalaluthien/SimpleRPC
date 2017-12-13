@@ -111,13 +111,13 @@ static int rsa_remain_size;
 
 
 int main(int argc, char *argv[]) {
-  char buf[DATA_SIZE];
+  char buf[ENTRY_SIZE];
 
   parse_input(argc, argv);
 
   CLIENT *clnt = connect_server(argv[1]);
 
-  enum CRYPTO_SCHEME cs = CS_DES;
+  enum CRYPTO_SCHEME cs = CS_RSA;
   set_crypto_scheme(cs);
   setcrypt(clnt);
 
@@ -624,25 +624,23 @@ void rsa_setup(CLIENT *clnt) {
 }
 
 void rsa_encrypt(char *data) {
-  unsigned char (*in)[rsa_block_size] =
-    (unsigned char (*)[rsa_block_size]) data;
-  unsigned char (*out)[RSA_size(rsa_public_key)] =
-    (unsigned char (*)[RSA_size(rsa_public_key)]) malloc(entry_size);
+  unsigned char *in = (unsigned char *) data;
+  unsigned char *out = (unsigned char *) malloc(entry_size);
 
   clock_t time_begin = clock();
 
-  int i;
-  for (i = 0; i < DATA_SIZE / rsa_block_size; i++) {
+  int i, n = DATA_SIZE / rsa_block_size;
+  for (i = 0; i < n; i++) {
     RSA_public_encrypt(rsa_block_size,
-                       (const unsigned char *) &in[i],
-                       (unsigned char *) &out[i],
+                       in + i * rsa_block_size,
+                       out + i * RSA_size(rsa_public_key),
                        rsa_public_key,
                        RSA_PKCS1_PADDING);
   }
   if (rsa_remain_size > 0) {
     RSA_public_encrypt(rsa_remain_size,
-                       (const unsigned char *) &in[DATA_SIZE / rsa_block_size],
-                       (unsigned char *) &out[DATA_SIZE / rsa_block_size],
+                       in + n * rsa_block_size,
+                       out + n * RSA_size(rsa_public_key),
                        rsa_public_key,
                        RSA_PKCS1_PADDING);
   }
@@ -656,33 +654,31 @@ void rsa_encrypt(char *data) {
 }
 
 void rsa_decrypt(char *data) {
-  unsigned char (*in)[RSA_size(rsa_private_key)] =
-    (unsigned char (*)[RSA_size(rsa_private_key)]) data;
-  unsigned char (*out)[rsa_block_size] =
-    (unsigned char (*)[rsa_block_size]) malloc(entry_size);
+  unsigned char *in = (unsigned char *) data;
+  unsigned char *out = (unsigned char *) malloc(entry_size);
 
   clock_t time_begin = clock();
 
-  int i;
-  for (i = 0; i < DATA_SIZE / rsa_block_size; i++) {
-    RSA_private_decrypt(rsa_block_size,
-                       (const unsigned char *) &in[i],
-                       (unsigned char *) &out[i],
-                       rsa_private_key,
-                       RSA_PKCS1_PADDING);
+  int i, n = DATA_SIZE / rsa_block_size;
+  for (i = 0; i < n; i++) {
+    RSA_private_decrypt(RSA_size(rsa_public_key),
+                        in + i * RSA_size(rsa_public_key),
+                        out + i * rsa_block_size,
+                        rsa_private_key,
+                        RSA_PKCS1_PADDING);
   }
   if (rsa_remain_size > 0) {
-    RSA_private_decrypt(rsa_remain_size,
-                       (const unsigned char *) &in[DATA_SIZE / rsa_block_size],
-                       (unsigned char *) &out[DATA_SIZE / rsa_block_size],
-                       rsa_private_key,
-                       RSA_PKCS1_PADDING);
+    RSA_private_decrypt(RSA_size(rsa_public_key),
+                        in + n * RSA_size(rsa_public_key),
+                        out + n * rsa_block_size,
+                        rsa_private_key,
+                        RSA_PKCS1_PADDING);
   }
 
   double cryption_time = (double) (clock() - time_begin) / CLOCKS_PER_SEC;
   sum_of_cryption_time += cryption_time;
   sum_of_cryption_time_sqare += cryption_time * cryption_time;
 
-  memcpy(in, out, entry_size);
+  memcpy(in, out, DATA_SIZE);
   free(out);
 }
