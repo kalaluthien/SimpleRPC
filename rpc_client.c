@@ -632,7 +632,7 @@ void rsa_encrypt(char *data) {
   clock_t time_begin = clock();
 
   int i;
-  for (i = 0; i < DATA_SIZE / rsa_block_size; i++)
+  for (i = 0; i < DATA_SIZE / rsa_block_size; i++) {
     RSA_public_encrypt(rsa_block_size,
                        (char *) &in[i],
                        (char *) &out[i],
@@ -664,7 +664,7 @@ void rsa_decrypt(char *data) {
   clock_t time_begin = clock();
 
   int i;
-  for (i = 0; i < DATA_SIZE / rsa_block_size; i++)
+  for (i = 0; i < DATA_SIZE / rsa_block_size; i++) {
     RSA_public_decrypt(rsa_block_size,
                        (char *) &in[i],
                        (char *) &out[i],
