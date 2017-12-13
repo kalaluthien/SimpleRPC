@@ -25,6 +25,7 @@
 /* Utility function prototypes */
 void parse_input(int argc, char *argv[]);
 void print_stats();
+void reset_stats();
 void print_buffer(char *buffer, int size);
 
 /* RPC function prototypes */
@@ -73,10 +74,15 @@ static double handshake_time;
 static struct timeval time_out = { .tv_sec = 10L, .tv_usec = 0L };
 static int request_keys[DB_COUNT];
 static int request_count;
-static int entry_size;
+static int entry_size = DATA_SIZE;
+
+/* Crypto scheme */
+enum CRYPTO_SCHEME { CS_NONE, CS_DES, CS_TDES, CS_AES, CS_RSA };
+const char *crypto_name[] = {
+  "None", "DES", "3-DES", "AES", "RSA"
+};
 
 /* Crypto fuction pointers */
-enum CRYPTO_SCHEME { CS_NONE, CS_DES, CS_TDES, CS_AES, CS_RSA };
 static void (*setcrypt)(CLIENT *);
 static void (*encrypt)(char *);
 static void (*decrypt)(char *);
@@ -115,20 +121,37 @@ int main(int argc, char *argv[]) {
   set_crypto_scheme(CS_AES);
   setcrypt(clnt);
 
+  printf("%s start (WRITE MODE)\n", crypto_name[CS_AES]);
+
   for (i = 0; i < request_count; i++) {
     usleep(100000);
 
-#ifdef READ_MODE
-    read_clnt(clnt, buf, request_keys[i]);
-
-    decrypt(buf);
-    check_buffer(buf, request_keys[i]);
-#elif WRITE_MODE
     init_buffer(buf, request_keys[i]);
+
     encrypt(buf);
 
     write_clnt(clnt, buf, request_keys[i]);
-#endif
+
+    progress_ratio = (double) (i + 1) / request_count;
+    progress_percent = (int) (progress_ratio * 100);
+    num_done = progress_percent / 2;
+    printf("\r%3d%% [%.*s%*s]", progress_percent, num_done, PROGRESS_BAR, 50 - num_done, "");
+    fflush(stdout);
+  }
+
+  print_stats();
+  reset_stats();
+
+  printf("\n%s start (READ MODE)\n", crypto_name[CS_AES]);
+
+  for (i = 0; i < request_count; i++) {
+    usleep(100000);
+
+    read_clnt(clnt, buf, request_keys[i]);
+
+    decrypt(buf);
+
+    check_buffer(buf, request_keys[i]);
 
     progress_ratio = (double) (i + 1) / request_count;
     progress_percent = (int) (progress_ratio * 100);
@@ -138,8 +161,6 @@ int main(int argc, char *argv[]) {
   }
 
   clnt_destroy(clnt);
-
-  print_stats();
 
   return 0;
 }
@@ -186,6 +207,16 @@ void print_stats() {
   printf("standatd deviation = %.3lf us\n\n", sqrt(var_cryption_time) * 1000000);
 
   printf("handshake time = %.3lf us\n", handshake_time * 1000000);
+}
+
+void reset_stats() {
+  sum_of_response_time = 0.0;
+  sum_of_response_time_sqare = 0.0;
+
+  sum_of_cryption_time = 0.0;
+  sum_of_cryption_time_sqare = 0.0;
+
+  handshake_time = 0.0;
 }
 
 
@@ -469,12 +500,13 @@ void tdes_decrypt(char *data) {
 
 void aes_setup(CLIENT *clnt) {
   dh_handshake(clnt);
-  entry_size = DATA_SIZE;
 
   int i;
   for (i = 0; i < AES_BLOCK_SIZE; i++) {
     aes_cipher_key[i] = dh_key[i];
   }
+
+  entry_size = DATA_SIZE;
 
   AES_set_encrypt_key(aes_cipher_key, 128, &aes_key[0]);
   AES_set_decrypt_key(aes_cipher_key, 128, &aes_key[1]);
