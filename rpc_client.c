@@ -247,7 +247,7 @@ void write_clnt(CLIENT *clnt, char *buffer, int key) {
   struct write_in_block wib;
 
   wib.key = key;
-  memcpy(wib.data, buffer, sizeof(char) * DATA_SIZE);
+  memcpy(wib.data, buffer, DATA_SIZE);
 
   clock_t time_begin = clock();
 
@@ -549,7 +549,7 @@ void dh_handshake(CLIENT *clnt) {
 }
 
 void rsa_setup(CLIENT *clnt) {
-  entry_size = DATA_SIZE * 2;
+  entry_size = DATA_SIZE;
   rsa_private_key = RSA_generate_key(DATA_SIZE, RSA_EXP, NULL, NULL);
 
   unsigned char *n_bin = (unsigned char *) malloc(RSA_size(rsa_private_key));

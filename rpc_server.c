@@ -168,7 +168,7 @@ struct read_out_block *read_rpc(struct read_in_block *blockp) {
   static struct read_out_block block;
 
 #ifdef LOG_ENABLE
-  printf("read_rpc(%d) requested\n", blockp->key);
+  printf("read_rpc(%d, %d) requested\n", blockp->key, blockp->size);
 #endif
 
   read_aquire();
@@ -180,7 +180,7 @@ struct read_out_block *read_rpc(struct read_in_block *blockp) {
   read_release();
 
 #ifdef LOG_ENABLE
-  printf("read_rpc(%d) returned\n", blockp->key);
+  printf("read_rpc(%d, %d) returned\n", blockp->key, block.size);
 #endif
 
   return &block;
@@ -188,7 +188,7 @@ struct read_out_block *read_rpc(struct read_in_block *blockp) {
 
 void write_rpc(struct write_in_block *blockp) {
 #ifdef LOG_ENABLE
-  printf("write_rpc(%d) requested\n", blockp->key);
+  printf("write_rpc(%d, %d) requested\n", blockp->key, blockp->size);
 #endif
 
   write_aquire();
@@ -200,7 +200,7 @@ void write_rpc(struct write_in_block *blockp) {
   write_release();
 
 #ifdef LOG_ENABLE
-  printf("write_rpc(%d) retured\n", blockp->key);
+  printf("write_rpc(%d, %d) retured\n", blockp->key, blockp->size);
 #endif
 }
 

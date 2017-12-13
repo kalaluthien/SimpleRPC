@@ -46,6 +46,10 @@ bool_t xdr_read_in(XDR *xdrs, struct read_in_block *blockp) {
 }
 
 bool_t xdr_read_out(XDR *xdrs, struct read_out_block *blockp) {
+  if (xdr_int(xdrs, &blockp->size) == 0) {
+    return 0;
+  }
+
   return xdr_vector(xdrs, blockp->data, blockp->size,
                     sizeof(char), (xdrproc_t) xdr_char);
 }
