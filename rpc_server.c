@@ -96,6 +96,8 @@ struct handshake_block *handshake_rpc(struct handshake_block *blockp);
 
 /* RPC global variables */
 static FILE *db;
+static read_out_block rb;
+static handshake_block hb;
 
 
 int main(int argc, char *argv[]) {
@@ -164,52 +166,52 @@ void get_host_status() {
 }
 
 /* RPC functions */
-struct read_out_block *read_rpc(struct read_in_block *blockp) {
-  static struct read_out_block block;
-
+struct read_out_block *read_rpc(struct read_in_block *rib) {
 #ifdef LOG_ENABLE
   printf("read_rpc(%d, %d) requested\n", blockp->key, blockp->size);
 #endif
 
+  struct read_out_block *rob = &rb;
+
   read_aquire();
 
-  int offset = blockp->key * (sizeof(int) + sizeof(char) * ENTRY_SIZE) + sizeof(int);
+  int offset = rib->key * (sizeof(int) + ENTRY_SIZE) + sizeof(int);
   fseek(db, offset, SEEK_SET);
-  block.size = fread(block.data, sizeof(char), blockp->size, db);
+  rob->size = fread(rob->data, sizeof(char), rib->size, db);
 
   read_release();
 
 #ifdef LOG_ENABLE
-  printf("read_rpc(%d, %d) returned\n", blockp->key, block.size);
+  printf("read_rpc(%d, %d) returned\n", rib->key, rob->size);
 #endif
 
-  return &block;
+  return rob;
 }
 
-void write_rpc(struct write_in_block *blockp) {
+void write_rpc(struct write_in_block *wib) {
 #ifdef LOG_ENABLE
-  printf("write_rpc(%d, %d) requested\n", blockp->key, blockp->size);
+  printf("write_rpc(%d, %d) requested\n", wib->key, wib->size);
 #endif
 
   write_aquire();
 
-  int offset = blockp->key * (sizeof(int) + sizeof(char) * ENTRY_SIZE) + sizeof(int);
+  int offset = wib->key * (sizeof(int) + ENTRY_SIZE) + sizeof(int);
   fseek(db, offset, SEEK_SET);
-  fwrite(blockp->data, sizeof(char), blockp->size, db);
+  fwrite(wib->data, sizeof(char), wib->size, db);
 
   write_release();
 
 #ifdef LOG_ENABLE
-  printf("write_rpc(%d, %d) retured\n", blockp->key, blockp->size);
+  printf("write_rpc(%d, %d) retured\n", wib->key, wib->size);
 #endif
 }
 
-struct handshake_block *handshake_rpc(struct handshake_block *blockp) {
+struct handshake_block *handshake_rpc(struct handshake_block *hib) {
 #ifdef LOG_ENABLE
-  printf("handshake_rpc(%d) requested\n", blockp->size);
+  printf("handshake_rpc(%d) requested\n", hb->size);
 #endif
 
-  static struct handshake_block block;
+  struct handshake_block *hob = &hb;
 
   FILE *fpem = fopen("dh1024.pem", "r");
 
@@ -218,7 +220,7 @@ struct handshake_block *handshake_rpc(struct handshake_block *blockp) {
 
   unsigned char *dh_key = (unsigned char *) malloc(DH_size(dh_server));
   BIGNUM *client_pub_key = BN_new();
-  BN_bin2bn(blockp->data, blockp->size, client_pub_key);
+  BN_bin2bn(hib->data, hib->size, client_pub_key);
 
   DH_compute_key(dh_key, client_pub_key, dh_server);
 
@@ -226,11 +228,11 @@ struct handshake_block *handshake_rpc(struct handshake_block *blockp) {
   free(dh_key);
   fclose(fpem);
 
-  block.size = BN_bn2bin(dh_server->pub_key, block.data);
+  hob->size = BN_bn2bin(dh_server->pub_key, hob->data);
 
 #ifdef LOG_ENABLE
-  printf("handshake_rpc(%d) returned\n", block.size);
+  printf("handshake_rpc(%d) returned\n", hob->size);
 #endif
 
-  return &block;
+  return hob;
 }

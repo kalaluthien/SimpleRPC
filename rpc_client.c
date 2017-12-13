@@ -26,6 +26,7 @@
 void parse_input(int argc, char *argv[]);
 void print_stats();
 void reset_stats();
+void print_progress(int i);
 void print_buffer(char *buffer, int size);
 
 /* RPC function prototypes */
@@ -118,10 +119,11 @@ int main(int argc, char *argv[]) {
 
   CLIENT *clnt = connect_server(argv[1]);
 
-  set_crypto_scheme(CS_AES);
+  enum CRYPTO_SCHEME cs = CS_DES;
+  set_crypto_scheme(cs);
   setcrypt(clnt);
 
-  printf("%s start (WRITE MODE)\n", crypto_name[CS_AES]);
+  printf("%s start (WRITE MODE)\n", crypto_name[cs]);
 
   for (i = 0; i < request_count; i++) {
     usleep(100000);
@@ -132,17 +134,15 @@ int main(int argc, char *argv[]) {
 
     write_clnt(clnt, buf, request_keys[i]);
 
-    progress_ratio = (double) (i + 1) / request_count;
-    progress_percent = (int) (progress_ratio * 100);
-    num_done = progress_percent / 2;
-    printf("\r%3d%% [%.*s%*s]", progress_percent, num_done, PROGRESS_BAR, 50 - num_done, "");
-    fflush(stdout);
+    if (i == 0 || (i + 1) % 10 == 0) {
+      print_progress(i + 1);
+    }
   }
 
   print_stats();
   reset_stats();
 
-  printf("\n%s start (READ MODE)\n", crypto_name[CS_AES]);
+  printf("\n%s start (READ MODE)\n", crypto_name[cs]);
 
   for (i = 0; i < request_count; i++) {
     usleep(100000);
@@ -153,13 +153,12 @@ int main(int argc, char *argv[]) {
 
     check_buffer(buf, request_keys[i]);
 
-    progress_ratio = (double) (i + 1) / request_count;
-    progress_percent = (int) (progress_ratio * 100);
-    num_done = progress_percent / 2;
-    printf("\r%3d%% [%.*s%*s]", progress_percent, num_done, PROGRESS_BAR, 50 - num_done, "");
-    fflush(stdout);
+    if (i == 0 || (i + 1) % 10 == 0) {
+      print_progress(i + 1);
+    }
   }
 
+  print_stats();
   clnt_destroy(clnt);
 
   return 0;
@@ -217,6 +216,27 @@ void reset_stats() {
   sum_of_cryption_time_sqare = 0.0;
 
   handshake_time = 0.0;
+}
+
+void print_progress(int i) {
+  double progress_ratio = (double) i / request_count;
+  int progress_percent = (int) (progress_ratio * 100);
+  int num_done = progress_percent / 2;
+
+  printf("\r%3d%% [%.*s%*s]", progress_percent, num_done, PROGRESS_BAR, 50 - num_done, "");
+  fflush(stdout);
+}
+
+void print_buffer(char *buffer, int size) {
+  int i;
+
+  printf("[");
+
+  for (i = 0; i < size; i++) {
+    printf("%c", buffer[i]);
+  }
+
+  printf("]\n");
 }
 
 
@@ -356,18 +376,6 @@ void check_buffer(char *buffer, int key) {
       exit(EXIT_FAILURE);
     }
   }
-}
-
-void print_buffer(char *buffer, int size) {
-  int i;
-
-  printf("[");
-
-  for (i = 0; i < size; i++) {
-    printf("%c", buffer[i]);
-  }
-
-  printf("]\n");
 }
 
 

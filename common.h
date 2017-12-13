@@ -32,17 +32,13 @@ struct write_in_block {
 };
 
 struct handshake_block {
-  unsigned char data[ENTRY_SIZE];
+  unsigned char data[DATA_SIZE];
   int size;
 };
 
 
 bool_t xdr_read_in(XDR *xdrs, struct read_in_block *blockp) {
-  if (xdr_int(xdrs, &blockp->key) == 0 || xdr_int(xdrs, &blockp->size) == 0) {
-    return 0;
-  }
-
-  return 1;
+  return (xdr_int(xdrs, &blockp->key) != 0 && xdr_int(xdrs, &blockp->size) != 0);
 }
 
 bool_t xdr_read_out(XDR *xdrs, struct read_out_block *blockp) {
